@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control Motika | Sistema Profesional</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <button class="menu-toggle" onclick="toggleMenu()">☰</button>
+    <nav class="sidebar" id="sidebar">
+        <h2>MOTIKA</h2>
+        <ul>
+            <li><button onclick="showSection('dashboard'); toggleMenu()">🏠 Panel Control</button></li>
+            <li><button onclick="showSection('inventario'); toggleMenu()">📦 Inventario</button></li>
+            <li><button onclick="showSection('finanzas'); toggleMenu()">💰 Ventas/Caja</button></li>
+            <li><button onclick="showSection('gastos-operativos'); toggleMenu()">⛽ Gastos Diarios</button></li>
+            <li><button onclick="showSection('pedidos'); toggleMenu()">📝 Pedidos</button></li>
+            <li><button onclick="showSection('deudas'); toggleMenu()">📉 Deudas</button></li>
+            <li><button onclick="showSection('reporte-general'); toggleMenu()">📊 Reporte General</button></li>
+        </ul>
+    </nav>
+
+    <main class="content">
+        <section id="dashboard" class="active">
+            <h1>Panel de Control</h1>
+            <div class="cards-container">
+                <div class="card card-ingreso"><h3>Ingresos Totales</h3><p id="total-ganancias">$0</p></div>
+                <div class="card card-gasto"><h3>Gastos Totales</h3><p id="total-gastos">$0</p></div>
+                <div class="card card-resaltada"><h3>Efectivo en Caja</h3><p id="balance-final">$0</p></div>
+            </div>
+            <div class="cards-container">
+                <div class="card"><h3>Costo Inventario</h3><p id="dash-valor-inv">$0</p></div>
+                <div class="card card-resaltada"><h3>Patrimonio Neto</h3><p id="dash-patrimonio">$0</p></div>
+            </div>
+        </section>
+
+        <section id="inventario">
+            <h1>Inventario Stock</h1>
+            <form id="form-producto">
+                <input type="text" id="prod-nombre" placeholder="Producto" required>
+                <input type="number" id="prod-cantidad" placeholder="Cant." required>
+                <input type="number" id="prod-costo" placeholder="Costo Unit." step="0.01" required>
+                <input type="number" id="prod-precio" placeholder="Precio Venta" step="0.01" required>
+                <button type="submit" class="btn-main">Agregar al Stock</button>
+            </form>
+            <div class="table-wrapper">
+                <table>
+                    <thead><tr><th>Producto</th><th>Stock</th><th>Costo</th><th>Venta</th><th>Acción</th></tr></thead>
+                    <tbody id="tabla-inventario"></tbody>
+                </table>
+            </div>
+            <div class="floating-inventory">
+                <p>Valor Costo: <span id="float-costo">$0</span> | Valor Venta: <span id="float-venta">$0</span></p>
+            </div>
+        </section>
+
+        <section id="finanzas">
+            <h1>Ventas y Caja</h1>
+            <button onclick="cerrarCaja()" class="btn-main" style="background: red; color:white; margin-bottom:15px;">🔒 Cerrar Caja y Guardar Reporte</button>
+            
+            <form id="form-transaccion">
+                <select id="trans-tipo" onchange="toggleProductoSelector()">
+                    <option value="venta">Venta de Stock</option>
+                    <option value="ingreso">Otro Ingreso</option>
+                    <option value="gasto">Gasto General</option>
+                </select>
+
+                <div id="contenedor-busqueda-prod" style="position: relative; flex: 2; display: block;">
+                    <input type="text" id="input-buscar-prod" placeholder="Escribe nombre del producto..." autocomplete="off">
+                    <div id="lista-sugerencias" class="sugerencias-dropdown" style="background:white; border:1px solid #ccc; position:absolute; width:100%; z-index:100;"></div>
+                    <input type="hidden" id="select-producto-id">
+                </div>
+
+                <input type="number" id="trans-cantidad" placeholder="Cant." value="1" style="display:block;">
+                <input type="text" id="trans-desc" placeholder="Descripción" style="display:none;">
+                <input type="number" id="trans-monto" placeholder="Monto $" style="display:none;">
+                <button type="submit" class="btn-main">Registrar Movimiento</button>
+            </form>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead><tr><th>Fecha</th><th>Descripción</th><th>Monto</th></tr></thead>
+                    <tbody id="lista-transacciones"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="gastos-operativos">
+            <h1>Gastos Diarios (Logística)</h1>
+            <form id="form-gastos-diarios">
+                <input type="date" id="gasto-fecha">
+                <select id="gasto-categoria">
+                    <option value="Surtido">Surtido</option>
+                    <option value="Transporte">Transporte</option>
+                    <option value="Otros">Otros</option>
+                </select>
+                <input type="text" id="gasto-desc-op" placeholder="Detalle" required>
+                <input type="number" id="gasto-monto-op" placeholder="Monto $" required>
+                <button type="submit" class="btn-main">Registrar Gasto</button>
+            </form>
+            <div class="table-wrapper">
+                <table>
+                    <thead><tr><th>Fecha</th><th>Cat.</th><th>Detalle</th><th>Monto</th></tr></thead>
+                    <tbody id="tabla-gastos-logistica"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="pedidos">
+            <h1>Gestión de Pedidos</h1>
+            <button onclick="generarListaCompras()" class="btn-main" style="background: #007bff; color:white; margin-bottom:15px;">
+    📋 Generar Lista de Compras (Consolidada)
+</button>
+
+<div id="seccion-lista-compras" style="display:none; background: #fffbe6; padding: 15px; border-radius: 8px; border: 1px dashed #e6db74; margin-bottom: 20px;">
+    <h3>🛒 Productos por Comprar</h3>
+    <ul id="lista-compras-items" style="list-style: none; padding: 0;"></ul>
+    <button onclick="this.parentElement.style.display='none'" style="margin-top:10px; cursor:pointer;">Cerrar Lista</button>
+</div>
+            <form id="form-encargo">
+                <input type="text" id="enc-cliente" placeholder="Nombre Cliente" required>
+                <div id="contenedor-filas-productos" style="width: 100%;">
+                    <div class="fila-producto">
+                        <input type="text" placeholder="Producto" class="p-nombre" required>
+                        <input type="number" placeholder="Cant." class="p-cant" required>
+                    </div>
+                </div>
+                <button type="button" onclick="agregarFila()" class="btn-main" style="background: gray; margin: 10px 0; color:white;">➕ Añadir Fila</button>
+                <input type="number" id="enc-total" placeholder="Total Pedido $" required>
+                <input type="number" id="enc-abono" placeholder="Abono Inicial $" value="0">
+                <button type="submit" class="btn-main" style="background: green; color:white;">Guardar Pedido</button>
+            </form>
+            <div id="lista-pedidos-clientes" class="cards-container"></div>
+        </section>
+
+        <section id="deudas">
+            <h1>Control de Deudores</h1>
+            <div class="card" style="margin-bottom:20px; border-left: 5px solid red;">
+                <h3>Registrar Deuda Directa</h3>
+                <form id="form-deuda-directa" style="box-shadow:none; padding:10px 0; background: transparent;">
+                    <input type="text" id="deuda-cliente" placeholder="Nombre Cliente" required>
+                    <input type="number" id="deuda-monto" placeholder="Monto que debe $" required>
+                    <button type="submit" class="btn-main">Registrar Deuda</button>
+                </form>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead><tr><th>Cliente</th><th>Deuda Actual</th><th>Abonar</th><th>Acción</th></tr></thead>
+                    <tbody id="tabla-deudores"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="reporte-general">
+            <h1>Historial de Cierres de Caja</h1>
+            <div id="historial-reportes"></div>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
