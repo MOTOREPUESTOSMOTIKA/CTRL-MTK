@@ -5,16 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Control Motika | Sistema Profesional</title>
     <link rel="stylesheet" href="style.css">
-        <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#4A90E2">
-<meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4A90E2">
+    <meta name="apple-mobile-web-app-capable" content="yes">
 
-<script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js');
-  }
-</script>
-
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js');
+      }
+    </script>
 </head>
 <body>
     <button class="menu-toggle" onclick="toggleMenu()">☰</button>
@@ -120,14 +119,14 @@
         <section id="pedidos">
             <h1>Gestión de Pedidos</h1>
             <button onclick="generarListaCompras()" class="btn-main" style="background: #007bff; color:white; margin-bottom:15px;">
-    📋 Generar Lista de Compras (Consolidada)
-</button>
+                📋 Generar Lista de Compras (Consolidada)
+            </button>
 
-<div id="seccion-lista-compras" style="display:none; background: #fffbe6; padding: 15px; border-radius: 8px; border: 1px dashed #e6db74; margin-bottom: 20px;">
-    <h3>🛒 Productos por Comprar</h3>
-    <ul id="lista-compras-items" style="list-style: none; padding: 0;"></ul>
-    <button onclick="this.parentElement.style.display='none'" style="margin-top:10px; cursor:pointer;">Cerrar Lista</button>
-</div>
+            <div id="seccion-lista-compras" style="display:none; background: #fffbe6; padding: 15px; border-radius: 8px; border: 1px dashed #e6db74; margin-bottom: 20px;">
+                <h3>🛒 Productos por Comprar</h3>
+                <ul id="lista-compras-items" style="list-style: none; padding: 0;"></ul>
+                <button onclick="this.parentElement.style.display='none'" style="margin-top:10px; cursor:pointer;">Cerrar Lista</button>
+            </div>
             <form id="form-encargo">
                 <input type="text" id="enc-cliente" placeholder="Nombre Cliente" required>
                 <div id="contenedor-filas-productos" style="width: 100%;">
@@ -167,6 +166,25 @@
             <div id="historial-reportes"></div>
         </section>
     </main>
+
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyAgecNVaN2viV9q57FP2-hBinLaw4v2efI",
+        authDomain: "sistema-motika.firebaseapp.com",
+        databaseURL: "https://sistema-motika-default-rtdb.firebaseio.com",
+        projectId: "sistema-motika",
+        storageBucket: "sistema-motika.firebasestorage.app",
+        messagingSenderId: "94857706277",
+        appId: "1:94857706277:web:b16eddaf6b5b91606f38cc"
+      };
+
+      // Inicializar Firebase
+      firebase.initializeApp(firebaseConfig);
+      const db = firebase.database();
+    </script>
 
     <script src="script.js"></script>
 </body>
