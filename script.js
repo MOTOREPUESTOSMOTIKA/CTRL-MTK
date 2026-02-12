@@ -1,10 +1,26 @@
-console.log("Sistema Motika cargado correctamente");
+console.log("Sistema Motika cargado correctamente con Firebase");
 
-/* --- ESTADO GLOBAL --- */
-let productos = JSON.parse(localStorage.getItem('productos')) || [];
-let transacciones = JSON.parse(localStorage.getItem('transacciones')) || [];
-let encargos = JSON.parse(localStorage.getItem('encargos')) || [];
-let historialReportes = JSON.parse(localStorage.getItem('historialReportes')) || [];
+/* --- ESTADO GLOBAL (Se cargará desde la nube) --- */
+let productos = [];
+let transacciones = [];
+let encargos = [];
+let historialReportes = [];
+
+/* --- SINCRONIZACIÓN CON FIREBASE --- */
+// Esta función escucha los cambios en la nube y actualiza todos los celulares
+db.ref('motika_data/').on('value', (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+        console.log("Sincronizando desde la nube...");
+        productos = data.productos || [];
+        transacciones = data.transacciones || [];
+        encargos = data.encargos || [];
+        historialReportes = data.historialReportes || [];
+        
+        // Refrescar visualmente todas las secciones
+        renderTodo();
+    }
+});
 
 /* --- NAVEGACIÓN --- */
 window.showSection = function(id) {
@@ -19,6 +35,35 @@ window.toggleMenu = function() {
     if (window.innerWidth <= 768 && sidebar) {
         sidebar.classList.toggle('active');
     }
+}
+
+/* --- FUNCIÓN CENTRAL DE ACTUALIZACIÓN --- */
+function actualizarTodo() {
+    // 1. Guardar en LocalStorage (Respaldo local)
+    localStorage.setItem('productos', JSON.stringify(productos));
+    localStorage.setItem('transacciones', JSON.stringify(transacciones));
+    localStorage.setItem('encargos', JSON.stringify(encargos));
+    localStorage.setItem('historialReportes', JSON.stringify(historialReportes));
+
+    // 2. ENVIAR A LA NUBE (Firebase)
+    db.ref('motika_data/').set({
+        productos: productos,
+        transacciones: transacciones,
+        encargos: encargos,
+        historialReportes: historialReportes
+    }).catch(error => console.error("Error al sincronizar:", error));
+
+    // 3. Renderizar localmente para respuesta inmediata
+    renderTodo();
+}
+
+function renderTodo() {
+    renderInventario();
+    renderPedidos();
+    renderDeudas();
+    renderFinanzas();
+    renderDashboard();
+    renderHistorialReportes();
 }
 
 /* --- GESTIÓN DE PRODUCTOS --- */
@@ -209,19 +254,7 @@ if(fTrans) {
     });
 }
 
-/* --- RENDERIZADO --- */
-function actualizarTodo() {
-    localStorage.setItem('productos', JSON.stringify(productos));
-    localStorage.setItem('transacciones', JSON.stringify(transacciones));
-    localStorage.setItem('encargos', JSON.stringify(encargos));
-    renderInventario();
-    renderPedidos();
-    renderDeudas();
-    renderFinanzas();
-    renderDashboard();
-    renderHistorialReportes();
-}
-
+/* --- RENDERIZADO DE SECCIONES --- */
 function renderDashboard() {
     let ing = 0, gas = 0;
     transacciones.forEach(t => t.tipo === 'ingreso' ? ing += t.monto : gas += t.monto);
@@ -242,8 +275,7 @@ function renderDashboard() {
     if(ePat) ePat.innerText = `$${(valorCostoInv + balanceActual).toLocaleString()}`;
 }
 
-
-    function renderInventario() {
+function renderInventario() {
     const t = document.getElementById('tabla-inventario');
     if(!t) return;
     let cTotal = 0, vTotal = 0;
@@ -252,28 +284,24 @@ function renderDashboard() {
         cTotal += (p.costo * p.cantidad); 
         vTotal += (p.precio * p.cantidad);
         
-        // Lógica de color de stock
         let claseStock = "";
-        if (p.cantidad === 0) {
-            claseStock = "stock-critico";
-        } else if (p.cantidad < 5) {
-            claseStock = "stock-bajo";
-        }
+        if (p.cantidad === 0) claseStock = "stock-critico";
+        else if (p.cantidad < 5) claseStock = "stock-bajo";
 
         return `
             <tr>
-                <td>${p.nombre} ${p.codigo ? `<br><small style="color:gray">ID: ${p.codigo}</small>` : ''}</td>
+                <td>${p.nombre}</td>
                 <td class="${claseStock}">${p.cantidad}</td>
                 <td>$${p.costo.toLocaleString()}</td>
                 <td>$${p.precio.toLocaleString()}</td>
-                <td>
-                    <button class="btn-danger" onclick="eliminarProd(${p.id})">❌</button>
-                </td>
+                <td><button class="btn-danger" onclick="eliminarProd(${p.id})">❌</button></td>
             </tr>`;
     }).join('');
 
-    document.getElementById('float-costo').innerText = `$${cTotal.toLocaleString()}`;
-    document.getElementById('float-venta').innerText = `$${vTotal.toLocaleString()}`;
+    const fc = document.getElementById('float-costo');
+    const fv = document.getElementById('float-venta');
+    if(fc) fc.innerText = `$${cTotal.toLocaleString()}`;
+    if(fv) fv.innerText = `$${vTotal.toLocaleString()}`;
 }
 
 function renderFinanzas() {
@@ -309,13 +337,18 @@ function renderPedidos() {
 window.toggleProductoSelector = function() {
     const tipo = document.getElementById('trans-tipo').value;
     const isVenta = (tipo === 'venta');
-    document.getElementById('contenedor-busqueda-prod').style.display = isVenta ? 'block' : 'none';
-    document.getElementById('trans-cantidad').style.display = isVenta ? 'block' : 'none';
-    document.getElementById('trans-monto').style.display = isVenta ? 'none' : 'block';
-    document.getElementById('trans-desc').style.display = isVenta ? 'none' : 'block';
+    const bprod = document.getElementById('contenedor-busqueda-prod');
+    const tcant = document.getElementById('trans-cantidad');
+    const tmonto = document.getElementById('trans-monto');
+    const tdesc = document.getElementById('trans-desc');
+    
+    if(bprod) bprod.style.display = isVenta ? 'block' : 'none';
+    if(tcant) tcant.style.display = isVenta ? 'block' : 'none';
+    if(tmonto) tmonto.style.display = isVenta ? 'none' : 'block';
+    if(tdesc) tdesc.style.display = isVenta ? 'none' : 'block';
 }
 
-/* --- REPORTES --- */
+/* --- CIERRES DE CAJA --- */
 window.cerrarCaja = function() {
     if (!confirm("¿Cerrar caja?")) return;
     let ing = 0, gas = 0;
@@ -376,6 +409,5 @@ window.generarListaCompras = function() {
 }
 
 window.onload = () => {
-    actualizarTodo();
     window.toggleProductoSelector();
 };
