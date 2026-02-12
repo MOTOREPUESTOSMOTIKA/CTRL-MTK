@@ -34,7 +34,8 @@ body {
 }
 
 .sidebar h2 { 
-    text-align: center; 
+    text-align: left; 
+    padding-left: 10px;
     margin: 10px 0 30px 0; 
     border-bottom: 2px solid var(--accent); 
     padding-bottom: 15px;
@@ -56,7 +57,8 @@ body {
     font-size: 15px; 
     display: flex;
     align-items: center;
-    gap: 10px;
+    justify-content: flex-start !important; /* Alineación a la izquierda */
+    gap: 12px;
     transition: 0.3s;
 }
 
@@ -107,9 +109,9 @@ section.active { display: block; animation: fadeIn 0.4s ease-out; }
 
 /* --- FOOTER FIJO DE INVENTARIO --- */
 .floating-inventory { 
-    position: fixed; /* Cambiado a fixed para que siempre esté abajo sin importar el scroll */
+    position: fixed; 
     bottom: 0; 
-    left: 260px; /* Alineado con el margen del content */
+    left: 260px; 
     right: 0;
     background: var(--primary); 
     color: white; 
@@ -128,7 +130,7 @@ section.active { display: block; animation: fadeIn 0.4s ease-out; }
 /* --- CARDS Y TABLAS --- */
 .cards-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 25px; }
 .card { background: white; padding: 20px; border-radius: 12px; box-shadow: var(--shadow); border: 1px solid rgba(0,0,0,0.05); }
-.table-wrapper { background: white; border-radius: 12px; overflow-x: auto; box-shadow: var(--shadow); margin-bottom: 80px; } /* Margen para no tapar con el footer */
+.table-wrapper { background: white; border-radius: 12px; overflow-x: auto; box-shadow: var(--shadow); margin-bottom: 80px; }
 table { width: 100%; border-collapse: collapse; min-width: 600px; }
 th, td { padding: 15px; text-align: left; border-bottom: 1px solid #f1f2f6; }
 
@@ -150,7 +152,7 @@ input, select {
     border-radius: 8px; 
     flex: 1; 
     min-width: 140px; 
-    font-size: 16px; /* Tamaño ideal para evitar zoom en iOS */
+    font-size: 16px; 
     outline: none; 
     transition: border 0.3s;
 }
@@ -170,7 +172,7 @@ input:focus, select:focus {
     transition: all 0.2s ease;
     display: inline-flex;
     align-items: center;
-    justify-content: center;
+    justify-content: center; /* Centrado para botones generales */
     gap: 8px;
     font-size: 14px;
 }
@@ -199,29 +201,25 @@ td button:hover, .card button:hover {
     background: #dcdde1;
 }
 
-/* Botón Danger (Rojo - para eliminar o cerrar caja) */
+/* Botón Danger */
 .btn-danger, button[onclick*="eliminar"], button[onclick*="cerrarCaja"] {
     background: var(--danger) !important;
     color: white !important;
 }
 
-.btn-danger:hover {
-    background: #c0392b !important;
-}
-
-/* Botón Success (Verde - para abonos o guardar) */
+/* Botón Success */
 button[style*="background: green"], button[onclick*="abonar"] {
     background: var(--success) !important;
     color: white !important;
 }
 
-/* Botón secundario (Gris - como el de añadir fila) */
+/* Botón secundario */
 button[style*="background: gray"] {
     background: #7f8c8d !important;
     color: white !important;
 }
 
-/* Botón de Reportes/Lista de compras (Azul oscuro) */
+/* Botón Reportes */
 button[onclick*="generarListaCompras"] {
     background: var(--primary) !important;
     width: 100%;
@@ -233,10 +231,10 @@ button[onclick*="generarListaCompras"] {
 
     .sidebar {
         left: -100%; 
-        width: 85%; /* Más ancho para mejor lectura */
+        width: 85%; 
         max-width: 300px;
         background-color: var(--glass);
-        backdrop-filter: blur(10px); /* Efecto iPhone */
+        backdrop-filter: blur(10px); 
         height: 100vh;
     }
 
@@ -257,14 +255,12 @@ button[onclick*="generarListaCompras"] {
 
     .floating-inventory p { display: flex; flex-direction: column; align-items: center; text-align: center; }
 
-    /* Hacer que todos los botones de los formularios ocupen el ancho total */
     form button, .btn-main {
         width: 100%;
         padding: 15px;
         font-size: 16px;
     }
 
-    /* Ajustar las filas de productos en pedidos para que no se amontonen */
     .fila-producto {
         display: grid;
         grid-template-columns: 1fr 80px 40px;
@@ -273,11 +269,8 @@ button[onclick*="generarListaCompras"] {
         margin-bottom: 10px;
     }
 
-    .fila-producto input {
-        min-width: 0; /* Evita que rompan el layout */
-    }
+    .fila-producto input { min-width: 0; }
 
-    /* Mejorar legibilidad de botones en tablas móviles */
     td button {
         width: 100%;
         margin-top: 5px;
