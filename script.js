@@ -242,14 +242,36 @@ function renderDashboard() {
     if(ePat) ePat.innerText = `$${(valorCostoInv + balanceActual).toLocaleString()}`;
 }
 
-function renderInventario() {
+
+    function renderInventario() {
     const t = document.getElementById('tabla-inventario');
     if(!t) return;
     let cTotal = 0, vTotal = 0;
+
     t.innerHTML = productos.map(p => {
-        cTotal += (p.costo * p.cantidad); vTotal += (p.precio * p.cantidad);
-        return `<tr><td>${p.nombre}</td><td>${p.cantidad}</td><td>$${p.costo}</td><td>$${p.precio}</td><td><button onclick="eliminarProd(${p.id})">❌</button></td></tr>`;
+        cTotal += (p.costo * p.cantidad); 
+        vTotal += (p.precio * p.cantidad);
+        
+        // Lógica de color de stock
+        let claseStock = "";
+        if (p.cantidad === 0) {
+            claseStock = "stock-critico";
+        } else if (p.cantidad < 5) {
+            claseStock = "stock-bajo";
+        }
+
+        return `
+            <tr>
+                <td>${p.nombre} ${p.codigo ? `<br><small style="color:gray">ID: ${p.codigo}</small>` : ''}</td>
+                <td class="${claseStock}">${p.cantidad}</td>
+                <td>$${p.costo.toLocaleString()}</td>
+                <td>$${p.precio.toLocaleString()}</td>
+                <td>
+                    <button class="btn-danger" onclick="eliminarProd(${p.id})">❌</button>
+                </td>
+            </tr>`;
     }).join('');
+
     document.getElementById('float-costo').innerText = `$${cTotal.toLocaleString()}`;
     document.getElementById('float-venta').innerText = `$${vTotal.toLocaleString()}`;
 }
