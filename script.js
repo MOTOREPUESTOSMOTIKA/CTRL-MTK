@@ -6,8 +6,17 @@ let transacciones = [];
 let encargos = [];
 let historialReportes = [];
 
+/* --- FORMATEO DE DINERO --- */
+function limpiarNumero(valor) {
+    if (!valor) return 0;
+    return parseFloat(valor.toString().replace(/\./g, '').replace(',', '.')) || 0;
+}
+
+function formatearNumero(valor) {
+    return Number(valor || 0).toLocaleString('es-CO');
+}
+
 /* --- SINCRONIZACIÓN CON FIREBASE --- */
-// Esta función escucha los cambios en la nube y actualiza todos los celulares
 db.ref('motika_data/').on('value', (snapshot) => {
     const data = snapshot.val();
     if (data) {
@@ -16,8 +25,6 @@ db.ref('motika_data/').on('value', (snapshot) => {
         transacciones = data.transacciones || [];
         encargos = data.encargos || [];
         historialReportes = data.historialReportes || [];
-        
-        // Refrescar visualmente todas las secciones
         renderTodo();
     }
 });
@@ -39,13 +46,11 @@ window.toggleMenu = function() {
 
 /* --- FUNCIÓN CENTRAL DE ACTUALIZACIÓN --- */
 function actualizarTodo() {
-    // 1. Guardar en LocalStorage (Respaldo local)
     localStorage.setItem('productos', JSON.stringify(productos));
     localStorage.setItem('transacciones', JSON.stringify(transacciones));
     localStorage.setItem('encargos', JSON.stringify(encargos));
     localStorage.setItem('historialReportes', JSON.stringify(historialReportes));
 
-    // 2. ENVIAR A LA NUBE (Firebase)
     db.ref('motika_data/').set({
         productos: productos,
         transacciones: transacciones,
@@ -53,7 +58,6 @@ function actualizarTodo() {
         historialReportes: historialReportes
     }).catch(error => console.error("Error al sincronizar:", error));
 
-    // 3. Renderizar localmente para respuesta inmediata
     renderTodo();
 }
 
@@ -75,8 +79,8 @@ if(fProd) {
             id: Date.now(),
             nombre: document.getElementById('prod-nombre').value,
             cantidad: parseInt(document.getElementById('prod-cantidad').value),
-            costo: parseFloat(document.getElementById('prod-costo').value),
-            precio: parseFloat(document.getElementById('prod-precio').value)
+            costo: limpiarNumero(document.getElementById('prod-costo').value),
+            precio: limpiarNumero(document.getElementById('prod-precio').value)
         });
         actualizarTodo();
         fProd.reset();
@@ -108,8 +112,8 @@ if(fEnc) {
     fEnc.addEventListener('submit', (e) => {
         e.preventDefault();
         const cliente = document.getElementById('enc-cliente').value;
-        const total = parseFloat(document.getElementById('enc-total').value);
-        const abono = parseFloat(document.getElementById('enc-abono').value) || 0;
+        const total = limpiarNumero(document.getElementById('enc-total').value);
+        const abono = limpiarNumero(document.getElementById('enc-abono').value) || 0;
         
         encargos.push({
             id: Date.now(),
@@ -143,7 +147,7 @@ if(fEnc) {
 window.entregarPedido = function(id) {
     const e = encargos.find(x => x.id === id);
     if(e.deuda > 0) {
-        alert(`No se puede entregar. El cliente aún debe $${e.deuda}`);
+        alert(`No se puede entregar. El cliente aún debe $${formatearNumero(e.deuda)}`);
         return;
     }
     if(confirm("¿Confirmar entrega total del pedido?")) {
@@ -157,7 +161,7 @@ const fDeuda = document.getElementById('form-deuda-directa');
 if(fDeuda) {
     fDeuda.addEventListener('submit', (e) => {
         e.preventDefault(); 
-        const m = parseFloat(document.getElementById('deuda-monto').value);
+        const m = limpiarNumero(document.getElementById('deuda-monto').value);
         const c = document.getElementById('deuda-cliente').value;
         
         encargos.push({
@@ -179,7 +183,7 @@ window.abonar = function(id) {
     const e = encargos.find(x => x.id === id);
     const input = document.getElementById(`in-abono-${id}`);
     if(!input) return;
-    const monto = parseFloat(input.value);
+    const monto = limpiarNumero(input.value);
     
     if(!monto || monto <= 0 || monto > e.deuda) return alert("Monto inválido");
     
@@ -225,7 +229,7 @@ if(fTrans) {
     fTrans.addEventListener('submit', (e) => {
         e.preventDefault();
         const tipo = document.getElementById('trans-tipo').value;
-        let monto = parseFloat(document.getElementById('trans-monto').value) || 0;
+        let monto = limpiarNumero(document.getElementById('trans-monto').value) || 0;
         let desc = document.getElementById('trans-desc').value;
 
         if(tipo === 'venta') {
@@ -254,7 +258,7 @@ if(fTrans) {
     });
 }
 
-/* --- RENDERIZADO DE SECCIONES --- */
+/* --- RENDERIZADO --- */
 function renderDashboard() {
     let ing = 0, gas = 0;
     transacciones.forEach(t => t.tipo === 'ingreso' ? ing += t.monto : gas += t.monto);
@@ -268,11 +272,11 @@ function renderDashboard() {
     let valorCostoInv = productos.reduce((acc, p) => acc + (p.costo * p.cantidad), 0);
     let balanceActual = ing - gas;
 
-    if(eGan) eGan.innerText = `$${ing.toLocaleString()}`;
-    if(eGas) eGas.innerText = `$${gas.toLocaleString()}`;
-    if(eBal) eBal.innerText = `$${balanceActual.toLocaleString()}`;
-    if(eInv) eInv.innerText = `$${valorCostoInv.toLocaleString()}`;
-    if(ePat) ePat.innerText = `$${(valorCostoInv + balanceActual).toLocaleString()}`;
+    if(eGan) eGan.innerText = `$${formatearNumero(ing)}`;
+    if(eGas) eGas.innerText = `$${formatearNumero(gas)}`;
+    if(eBal) eBal.innerText = `$${formatearNumero(balanceActual)}`;
+    if(eInv) eInv.innerText = `$${formatearNumero(valorCostoInv)}`;
+    if(ePat) ePat.innerText = `$${formatearNumero(valorCostoInv + balanceActual)}`;
 }
 
 function renderInventario() {
@@ -292,23 +296,23 @@ function renderInventario() {
             <tr>
                 <td>${p.nombre}</td>
                 <td class="${claseStock}">${p.cantidad}</td>
-                <td>$${p.costo.toLocaleString()}</td>
-                <td>$${p.precio.toLocaleString()}</td>
+                <td>$${formatearNumero(p.costo)}</td>
+                <td>$${formatearNumero(p.precio)}</td>
                 <td><button class="btn-danger" onclick="eliminarProd(${p.id})">❌</button></td>
             </tr>`;
     }).join('');
 
     const fc = document.getElementById('float-costo');
     const fv = document.getElementById('float-venta');
-    if(fc) fc.innerText = `$${cTotal.toLocaleString()}`;
-    if(fv) fv.innerText = `$${vTotal.toLocaleString()}`;
+    if(fc) fc.innerText = `$${formatearNumero(cTotal)}`;
+    if(fv) fv.innerText = `$${formatearNumero(vTotal)}`;
 }
 
 function renderFinanzas() {
     const lista = document.getElementById('lista-transacciones');
     if(lista) {
         lista.innerHTML = transacciones.map(t => `
-            <tr><td>${t.fecha}</td><td>${t.desc}</td><td style="color:${t.tipo==='ingreso'?'green':'red'}">$${t.monto}</td></tr>
+            <tr><td>${t.fecha}</td><td>${t.desc}</td><td style="color:${t.tipo==='ingreso'?'green':'red'}">$${formatearNumero(t.monto)}</td></tr>
         `).reverse().join('');
     }
 }
@@ -317,7 +321,7 @@ function renderDeudas() {
     const t = document.getElementById('tabla-deudores');
     if(!t) return;
     t.innerHTML = encargos.filter(e => e.deuda > 0).map(e => `
-        <tr><td>${e.cliente}</td><td style="color:red">$${e.deuda}</td>
+        <tr><td>${e.cliente}</td><td style="color:red">$${formatearNumero(e.deuda)}</td>
         <td><input type="number" id="in-abono-${e.id}" style="width:70px"></td>
         <td><button onclick="abonar(${e.id})">Abonar</button></td></tr>
     `).join('');
@@ -328,7 +332,7 @@ function renderPedidos() {
     if(!c) return;
     c.innerHTML = encargos.filter(e => e.tipo === 'pedido' && !e.entregadoTotal).map(e => `
         <div class="card">
-            <strong>👤 ${e.cliente}</strong><br>Debe: $${e.deuda}
+            <strong>👤 ${e.cliente}</strong><br>Debe: $${formatearNumero(e.deuda)}
             <button onclick="entregarPedido(${e.id})" style="width:100%; margin-top:5px;">Entregar</button>
         </div>
     `).join('');
@@ -376,7 +380,7 @@ function renderHistorialReportes() {
     contenedor.innerHTML = historialReportes.map(r => `
         <div class="card" style="border-left:5px solid green;">
             <h4>📅 ${r.fecha}</h4>
-            <p><b>Balance: $${r.balanceNeto.toLocaleString()}</b></p>
+            <p><b>Balance: $${formatearNumero(r.balanceNeto)}</b></p>
             <button onclick="eliminarReporte(${r.id})" style="color:red; background:none; border:none; cursor:pointer;">Eliminar</button>
         </div>
     `).reverse().join('');
