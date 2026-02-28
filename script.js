@@ -17,6 +17,13 @@ function formatearNumero(valor) {
     return Number(valor || 0).toLocaleString('es-CO');
 }
 
+/* --- RENDER GENERAL --- */
+function renderTodo(){
+    renderDashboard();
+    renderInventario();
+    renderPedidos();
+}
+
 /* --- SINCRONIZACIÓN --- */
 db.ref('motika_data/').on('value', (snapshot) => {
     const data = snapshot.val();
@@ -104,7 +111,12 @@ window.editarStock = function(id, valor){
     }
 };
 
-/* --- GASTOS DESCUENTAN EFECTIVO --- */
+window.eliminarProd = function(id){
+    productos = productos.filter(p => p.id !== id);
+    actualizarTodo();
+};
+
+/* --- TRANSACCIONES --- */
 const fTrans = document.getElementById('form-transaccion');
 if(fTrans){
     fTrans.addEventListener('submit',(e)=>{
@@ -139,7 +151,7 @@ if(fTrans){
     });
 }
 
-/* --- PEDIDOS MEJORADOS --- */
+/* --- PEDIDOS --- */
 function renderPedidos(){
     const c = document.getElementById("lista-pedidos-clientes");
     if(!c) return;
@@ -193,16 +205,16 @@ window.entregarTodo = function(id){
 
     const opcion = confirm("Aceptar como venta? (Cancelar = Deudor)");
     if(opcion){
-        efectivoCaja += e.deuda;
+        efectivoCaja += e.deuda || e.total;
         transacciones.push({
             id: Date.now(),
             tipo:"ingreso",
             desc:"Venta total pedido "+e.cliente,
-            monto:e.deuda,
+            monto:e.deuda || e.total,
             fecha:new Date().toLocaleDateString()
         });
     }else{
-        incrementarDeuda(e.cliente,e.deuda);
+        incrementarDeuda(e.cliente,e.deuda || e.total);
     }
 
     e.entregadoTotal=true;
@@ -210,7 +222,7 @@ window.entregarTodo = function(id){
     actualizarTodo();
 };
 
-/* --- DEUDORES ACUMULABLES --- */
+/* --- DEUDORES --- */
 function incrementarDeuda(cliente,monto){
     let existente = encargos.find(e=>e.cliente===cliente && e.tipo==="directa" && e.deuda>0);
     if(existente){
