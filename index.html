@@ -26,7 +26,7 @@
             <li><button onclick="showSection('gastos-operativos'); toggleMenu()">⛽ Gastos Diarios</button></li>
             <li><button onclick="showSection('pedidos'); toggleMenu()">📝 Pedidos</button></li>
             <li><button onclick="showSection('deudas'); toggleMenu()">📉 Deudas</button></li>
-            <li><button onclick="showSection('reporte-general'); toggleMenu()">📊 Historial Cierres</button></li>
+            <li><button onclick="showSection('reporte-general'); toggleMenu()">📊 Reporte General</button></li>
         </ul>
     </nav>
 
@@ -35,16 +35,16 @@
             <h1>Panel de Control</h1>
             <div class="dashboard-grid">
                 <div class="dash-column">
-                    <h2>📊 Totales Históricos</h2>
-                    <div class="card card-ingreso"><h3>Ventas Totales</h3><p id="total-ganancias-hist">$0</p></div>
-                    <div class="card card-gasto"><h3>Gastos Totales</h3><p id="total-gastos-hist">$0</p></div>
-                    <div class="card card-resaltada"><h3>Ganancia Neta</h3><p id="ganancia-neta-hist">$0</p></div>
+                    <h3>📊 Totales Históricos</h3>
+                    <div class="card card-ingreso"><h4>Ventas Totales</h4><p id="hist-ventas">$0</p></div>
+                    <div class="card card-gasto"><h4>Gastos Totales</h4><p id="hist-gastos">$0</p></div>
+                    <div class="card card-resaltada"><h4>Ganancia Neta</h4><p id="hist-ganancia">$0</p></div>
                 </div>
                 <div class="dash-column">
-                    <h2>⏳ Corte de Caja Actual</h2>
-                    <div class="card card-ingreso"><h3>Ventas Hoy/Semana</h3><p id="total-ganancias-caja">$0</p></div>
-                    <div class="card card-gasto"><h3>Gastos Hoy/Semana</h3><p id="total-gastos-caja">$0</p></div>
-                    <div class="card card-resaltada"><h3>Efectivo en Caja</h3><p id="balance-final-caja">$0</p></div>
+                    <h3>📅 Corte de Caja Actual</h3>
+                    <div class="card card-ingreso"><h4>Ventas (Caja)</h4><p id="caja-ventas">$0</p></div>
+                    <div class="card card-gasto"><h4>Gastos (Caja)</h4><p id="caja-gastos">$0</p></div>
+                    <div class="card card-resaltada"><h4>Efectivo en Caja</h4><p id="balance-final">$0</p></div>
                 </div>
             </div>
             <div class="cards-container" style="margin-top:20px;">
@@ -75,7 +75,7 @@
 
         <section id="finanzas">
             <h1>Ventas y Caja</h1>
-            <button onclick="cerrarCaja()" class="btn-main" style="background: red; color:white; margin-bottom:15px; width: 100%;">🔒 Cerrar Caja y Guardar Reporte</button>
+            <button onclick="cerrarCaja()" class="btn-main" style="background: red; color:white; margin-bottom:15px;">🔒 Cerrar Caja y Guardar Reporte</button>
             
             <form id="form-transaccion">
                 <select id="trans-tipo" onchange="toggleProductoSelector()">
@@ -86,7 +86,7 @@
 
                 <div id="contenedor-busqueda-prod" style="position: relative; flex: 2; display: block;">
                     <input type="text" id="input-buscar-prod" placeholder="Escribe nombre del producto..." autocomplete="off">
-                    <div id="lista-sugerencias" class="sugerencias-dropdown"></div>
+                    <div id="lista-sugerencias" class="sugerencias-dropdown" style="background:white; border:1px solid #ccc; position:absolute; width:100%; z-index:100;"></div>
                     <input type="hidden" id="select-producto-id">
                 </div>
 
@@ -115,7 +115,7 @@
                 </select>
                 <input type="text" id="gasto-desc-op" placeholder="Detalle" required>
                 <input type="number" id="gasto-monto-op" placeholder="Monto $" required>
-                <button type="submit" class="btn-main">Registrar Gasto</button>
+                <button type="submit" class="btn-main">Registrar Gasto (Resta de Caja)</button>
             </form>
             <div class="table-wrapper">
                 <table>
@@ -127,16 +127,16 @@
 
         <section id="pedidos">
             <h1>Gestión de Pedidos</h1>
-            <button onclick="generarListaCompras()" class="btn-main" style="background: #007bff; color:white; margin-bottom:15px; width:100%;">
+            <button onclick="generarListaCompras()" class="btn-main" style="background: #007bff; color:white; margin-bottom:15px;">
                 📋 Generar Lista de Compras
             </button>
 
             <div id="seccion-lista-compras" style="display:none; background: #fffbe6; padding: 15px; border-radius: 8px; border: 1px dashed #e6db74; margin-bottom: 20px;">
                 <h3>🛒 Productos por Comprar</h3>
                 <ul id="lista-compras-items" style="list-style: none; padding: 0;"></ul>
-                <button onclick="this.parentElement.style.display='none'" class="btn-main">Cerrar Lista</button>
+                <button onclick="this.parentElement.style.display='none'" style="margin-top:10px; cursor:pointer;">Cerrar Lista</button>
             </div>
-            
+
             <form id="form-encargo">
                 <input type="text" id="enc-cliente" placeholder="Nombre Cliente" required>
                 <div id="contenedor-filas-productos" style="width: 100%;">
@@ -145,13 +145,12 @@
                         <input type="number" placeholder="Cant." class="p-cant" required>
                     </div>
                 </div>
-                <button type="button" onclick="agregarFila()" class="btn-main" style="background: gray; color:white;">➕ Añadir Producto</button>
+                <button type="button" onclick="agregarFila()" class="btn-main" style="background: gray; margin: 10px 0; color:white;">➕ Añadir Producto</button>
                 <input type="number" id="enc-total" placeholder="Total Pedido $" required>
                 <input type="number" id="enc-abono" placeholder="Abono Inicial $" value="0">
                 <button type="submit" class="btn-main" style="background: green; color:white;">Guardar Pedido</button>
             </form>
-            
-            <div id="lista-pedidos-clientes" class="pedidos-container"></div>
+            <div id="lista-pedidos-clientes" class="cards-container"></div>
         </section>
 
         <section id="deudas">
@@ -159,9 +158,9 @@
             <div class="card" style="margin-bottom:20px; border-left: 5px solid red;">
                 <h3>Registrar/Incrementar Deuda</h3>
                 <form id="form-deuda-directa" style="box-shadow:none; padding:10px 0; background: transparent;">
-                    <input type="text" id="deuda-cliente" placeholder="Nombre del Deudor" required>
-                    <input type="number" id="deuda-monto" placeholder="Monto $" required>
-                    <button type="submit" class="btn-main">Actualizar Deuda</button>
+                    <input type="text" id="deuda-cliente" placeholder="Nombre Cliente (Exacto)" required>
+                    <input type="number" id="deuda-monto" placeholder="Monto a sumar $" required>
+                    <button type="submit" class="btn-main">Sumar a Deuda</button>
                 </form>
             </div>
             <div class="table-wrapper">
