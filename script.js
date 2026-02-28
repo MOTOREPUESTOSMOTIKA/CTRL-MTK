@@ -15,15 +15,145 @@ function formatearNumero(valor) {
 }
 
 /* --- SINCRONIZACIÓN FIREBASE --- */
-db.ref('motika_data/').on('value', (snapshot) => {
-    const data = snapshot.val();
-    if (data) {
-        productos = data.productos || [];
-        transacciones = data.transacciones || [];
-        encargos = data.encargos || [];
-        historialReportes = data.historialReportes || [];
-        renderTodo();
+/* --- INICIO FORZADO DE DATOS --- */
+function cargarDatosDesdeNube() {
+    console.log("Intentando conectar con Firebase...");
+    db.ref('motika_data/').on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            console.log("Datos recibidos correctamente:", data);
+            productos = data.productos || [];
+            transacciones = data.transacciones || [];
+            encargos = data.encargos || [];
+            historialReportes = data.historialReportes || [];
+            renderTodo(); // Esto dibuja todo en pantalla
+        } else {
+            console.log("Firebase está vacío o no hay datos aún.");
+        }
+    }, (error) => {
+        console.error("Error de lectura en Firebase:", error);
+    });
+}
+
+/* --- VARIABLES GLOBALES --- */
+let productos = [];
+let transacciones = [];
+let encargos = [];
+let historialReportes = [];
+
+/* --- FUNCIONES DE FORMATEO --- */
+function limpiarNumero(valor) {
+    if (!valor) return 0;
+    return parseFloat(valor.toString().replace(/\./g, '').replace(',', '.')) || 0;
+}
+function formatearNumero(valor) {
+    return Number(valor || 0).toLocaleString('es-CO');
+}
+
+/* --- FUNCIÓN DE GUARDADO --- */
+function actualizarTodo() {
+    db.ref('motika_data/').set({
+        productos: productos,
+        transacciones: transacciones,
+        encargos: encargos,
+        historialReportes: historialReportes
+    }).then(() => {
+        console.log("Sincronizado con éxito.");
+    }).catch(err => alert("Error al guardar: " + err));
+    renderTodo();
+}
+
+/* --- RENDERIZADO DEL DASHBOARD CORREGIDO --- */
+function renderDashboard() {
+    let ingHist = 0, gasHist = 0;
+    let ingCaja = 0, gasCaja = 0;
+
+    historialReportes.forEach(r => {
+        ingHist += (r.totalIngresos || 0);
+        gasHist += (r.totalGastos || 0);
+    });
+
+    transacciones.forEach(t => {
+        const monto = parseFloat(t.monto) || 0;
+        if(t.tipo === 'ingreso') {
+            ingHist += monto;
+            ingCaja += monto;
+        } else {
+            gasHist += monto;
+            gasCaja += monto;
+        }
+    });
+
+    // Suma de inventario (Aquí se asegura que lea los productos de la nube)
+    let valorCostoInventario = 0;
+    productos.forEach(p => {
+        const c = parseFloat(p.costo) || 0;
+        const q = parseInt(p.cantidad) || 0;
+        valorCostoInventario += (c * q);
+    });
+
+    // Actualizar Textos
+    const ids = {
+        'total-ganancias-hist': ingHist,
+        'total-gastos-hist': gasHist,
+        'ganancia-neta-hist': ingHist - gasHist,
+        'total-ganancias-caja': ingCaja,
+        'total-gastos-caja': gasCaja,
+        'balance-final-caja': ingCaja - gasCaja,
+        'dash-valor-inv': valorCostoInventario,
+        'dash-patrimonio': valorCostoInventario + (ingCaja - gasCaja)
+    };
+
+    for (let id in ids) {
+        const el = document.getElementById(id);
+        if (el) el.innerText = `$${formatearNumero(ids[id])}`;
     }
+}
+
+/* --- RENDERIZADO DE TABLA INVENTARIO --- */
+function renderInventario() {
+    const t = document.getElementById('tabla-inventario');
+    if(!t) return;
+    let costoTotalInv = 0;
+    let ventaTotalInv = 0;
+
+    t.innerHTML = productos.map(p => {
+        const cTotal = (p.costo * p.cantidad);
+        const vTotal = (p.precio * p.cantidad);
+        costoTotalInv += cTotal;
+        ventaTotalInv += vTotal;
+
+        return `<tr>
+            <td>${p.nombre}</td>
+            <td onclick="editarStock(${p.id})" style="cursor:pointer; font-weight:bold; color:#3498db;">${p.cantidad} ✏️</td>
+            <td>$${formatearNumero(p.costo)}</td>
+            <td>$${formatearNumero(p.precio)}</td>
+            <td><button class="btn-danger" onclick="eliminarProd(${p.id})">❌</button></td>
+        </tr>`;
+    }).join('');
+
+    if(document.getElementById('float-costo')) document.getElementById('float-costo').innerText = `$${formatearNumero(costoTotalInv)}`;
+    if(document.getElementById('float-venta')) document.getElementById('float-venta').innerText = `$${formatearNumero(ventaTotalInv)}`;
+}
+
+/* --- RESTO DE FUNCIONES (PEDIDOS, DEUDAS, ETC) --- */
+// (Copia las funciones de los pedidos, deudas y finanzas del código anterior aquí)
+
+function renderTodo() {
+    renderInventario();
+    renderPedidos();
+    renderDeudas();
+    renderFinanzas();
+    renderDashboard();
+    renderHistorialReportes();
+}
+
+/* --- INICIALIZACIÓN --- */
+window.onload = () => {
+    cargarDatosDesdeNube(); // <--- Llama a la nube al abrir
+    if(typeof toggleProductoSelector === 'function') toggleProductoSelector();
+};
+
 });
 
 function actualizarTodo() {
