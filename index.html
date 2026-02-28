@@ -26,49 +26,33 @@
             <li><button onclick="showSection('gastos-operativos'); toggleMenu()">⛽ Gastos Diarios</button></li>
             <li><button onclick="showSection('pedidos'); toggleMenu()">📝 Pedidos</button></li>
             <li><button onclick="showSection('deudas'); toggleMenu()">📉 Deudas</button></li>
-            <li><button onclick="showSection('reporte-general'); toggleMenu()">📊 Reporte General</button></li>
+            <li><button onclick="showSection('reporte-general'); toggleMenu()">📊 Historial Cierres</button></li>
         </ul>
     </nav>
 
     <main class="content">
-
-        <!-- ================= PANEL CONTROL ================= -->
         <section id="dashboard" class="active">
             <h1>Panel de Control</h1>
-
-            <div class="dashboard-columns">
-
-                <!-- DESDE SIEMPRE -->
-                <div class="dashboard-col">
-                    <h2>📊 Totales Desde Siempre</h2>
-                    <div class="cards-container">
-                        <div class="card"><h3>Ingresos</h3><p id="total-ingresos-global">$0</p></div>
-                        <div class="card"><h3>Gastos</h3><p id="total-gastos-global">$0</p></div>
-                        <div class="card card-resaltada"><h3>Efectivo</h3><p id="balance-global">$0</p></div>
-                        <div class="card"><h3>Ganancia Real</h3><p id="ganancia-global">$0</p></div>
-                    </div>
+            <div class="dashboard-grid">
+                <div class="dash-column">
+                    <h2>📊 Totales Históricos</h2>
+                    <div class="card card-ingreso"><h3>Ventas Totales</h3><p id="total-ganancias-hist">$0</p></div>
+                    <div class="card card-gasto"><h3>Gastos Totales</h3><p id="total-gastos-hist">$0</p></div>
+                    <div class="card card-resaltada"><h3>Ganancia Neta</h3><p id="ganancia-neta-hist">$0</p></div>
                 </div>
-
-                <!-- DESDE ÚLTIMO CIERRE -->
-                <div class="dashboard-col">
-                    <h2>📅 Desde Último Cierre</h2>
-                    <div class="cards-container">
-                        <div class="card"><h3>Ingresos</h3><p id="total-ingresos-parcial">$0</p></div>
-                        <div class="card"><h3>Gastos</h3><p id="total-gastos-parcial">$0</p></div>
-                        <div class="card card-resaltada"><h3>Efectivo</h3><p id="balance-parcial">$0</p></div>
-                        <div class="card"><h3>Ganancia Real</h3><p id="ganancia-parcial">$0</p></div>
-                    </div>
+                <div class="dash-column">
+                    <h2>⏳ Corte de Caja Actual</h2>
+                    <div class="card card-ingreso"><h3>Ventas Hoy/Semana</h3><p id="total-ganancias-caja">$0</p></div>
+                    <div class="card card-gasto"><h3>Gastos Hoy/Semana</h3><p id="total-gastos-caja">$0</p></div>
+                    <div class="card card-resaltada"><h3>Efectivo en Caja</h3><p id="balance-final-caja">$0</p></div>
                 </div>
-
             </div>
-
-            <div class="cards-container">
+            <div class="cards-container" style="margin-top:20px;">
                 <div class="card"><h3>Costo Inventario</h3><p id="dash-valor-inv">$0</p></div>
                 <div class="card card-resaltada"><h3>Patrimonio Neto</h3><p id="dash-patrimonio">$0</p></div>
             </div>
         </section>
 
-        <!-- ================= INVENTARIO ================= -->
         <section id="inventario">
             <h1>Inventario Stock</h1>
             <form id="form-producto">
@@ -78,33 +62,20 @@
                 <input type="number" id="prod-precio" placeholder="Precio Venta" step="0.01" required>
                 <button type="submit" class="btn-main">Agregar al Stock</button>
             </form>
-
             <div class="table-wrapper">
                 <table>
-                    <thead>
-                        <tr>
-                            <th>Producto</th>
-                            <th>Stock</th>
-                            <th>Costo</th>
-                            <th>Venta</th>
-                            <th>Editar</th>
-                            <th>Eliminar</th>
-                        </tr>
-                    </thead>
+                    <thead><tr><th>Producto</th><th>Stock</th><th>Costo</th><th>Venta</th><th>Acción</th></tr></thead>
                     <tbody id="tabla-inventario"></tbody>
                 </table>
             </div>
-
             <div class="floating-inventory">
                 <p>Valor Costo: <span id="float-costo">$0</span> | Valor Venta: <span id="float-venta">$0</span></p>
             </div>
         </section>
 
-        <!-- ================= RESTO SIN CAMBIOS ESTRUCTURALES ================= -->
-
         <section id="finanzas">
             <h1>Ventas y Caja</h1>
-            <button onclick="cerrarCaja()" class="btn-main btn-danger">🔒 Cerrar Caja y Guardar Reporte</button>
+            <button onclick="cerrarCaja()" class="btn-main" style="background: red; color:white; margin-bottom:15px; width: 100%;">🔒 Cerrar Caja y Guardar Reporte</button>
             
             <form id="form-transaccion">
                 <select id="trans-tipo" onchange="toggleProductoSelector()">
@@ -113,15 +84,15 @@
                     <option value="gasto">Gasto General</option>
                 </select>
 
-                <div id="contenedor-busqueda-prod">
+                <div id="contenedor-busqueda-prod" style="position: relative; flex: 2; display: block;">
                     <input type="text" id="input-buscar-prod" placeholder="Escribe nombre del producto..." autocomplete="off">
                     <div id="lista-sugerencias" class="sugerencias-dropdown"></div>
                     <input type="hidden" id="select-producto-id">
                 </div>
 
-                <input type="number" id="trans-cantidad" placeholder="Cant." value="1">
-                <input type="text" id="trans-desc" placeholder="Descripción">
-                <input type="number" id="trans-monto" placeholder="Monto $">
+                <input type="number" id="trans-cantidad" placeholder="Cant." value="1" style="display:block;">
+                <input type="text" id="trans-desc" placeholder="Descripción" style="display:none;">
+                <input type="number" id="trans-monto" placeholder="Monto $" style="display:none;">
                 <button type="submit" class="btn-main">Registrar Movimiento</button>
             </form>
 
@@ -156,24 +127,43 @@
 
         <section id="pedidos">
             <h1>Gestión de Pedidos</h1>
+            <button onclick="generarListaCompras()" class="btn-main" style="background: #007bff; color:white; margin-bottom:15px; width:100%;">
+                📋 Generar Lista de Compras
+            </button>
+
+            <div id="seccion-lista-compras" style="display:none; background: #fffbe6; padding: 15px; border-radius: 8px; border: 1px dashed #e6db74; margin-bottom: 20px;">
+                <h3>🛒 Productos por Comprar</h3>
+                <ul id="lista-compras-items" style="list-style: none; padding: 0;"></ul>
+                <button onclick="this.parentElement.style.display='none'" class="btn-main">Cerrar Lista</button>
+            </div>
+            
             <form id="form-encargo">
                 <input type="text" id="enc-cliente" placeholder="Nombre Cliente" required>
-                <div id="contenedor-filas-productos"></div>
-                <button type="button" onclick="agregarFila()" class="btn-main">➕ Añadir Fila</button>
+                <div id="contenedor-filas-productos" style="width: 100%;">
+                    <div class="fila-producto">
+                        <input type="text" placeholder="Producto" class="p-nombre" required>
+                        <input type="number" placeholder="Cant." class="p-cant" required>
+                    </div>
+                </div>
+                <button type="button" onclick="agregarFila()" class="btn-main" style="background: gray; color:white;">➕ Añadir Producto</button>
                 <input type="number" id="enc-total" placeholder="Total Pedido $" required>
                 <input type="number" id="enc-abono" placeholder="Abono Inicial $" value="0">
-                <button type="submit" class="btn-main">Guardar Pedido</button>
+                <button type="submit" class="btn-main" style="background: green; color:white;">Guardar Pedido</button>
             </form>
-            <div id="lista-pedidos-clientes" class="cards-container"></div>
+            
+            <div id="lista-pedidos-clientes" class="pedidos-container"></div>
         </section>
 
         <section id="deudas">
             <h1>Control de Deudores</h1>
-            <form id="form-deuda-directa">
-                <input type="text" id="deuda-cliente" placeholder="Nombre Cliente" required>
-                <input type="number" id="deuda-monto" placeholder="Monto que debe $" required>
-                <button type="submit" class="btn-main">Registrar Deuda</button>
-            </form>
+            <div class="card" style="margin-bottom:20px; border-left: 5px solid red;">
+                <h3>Registrar/Incrementar Deuda</h3>
+                <form id="form-deuda-directa" style="box-shadow:none; padding:10px 0; background: transparent;">
+                    <input type="text" id="deuda-cliente" placeholder="Nombre del Deudor" required>
+                    <input type="number" id="deuda-monto" placeholder="Monto $" required>
+                    <button type="submit" class="btn-main">Actualizar Deuda</button>
+                </form>
+            </div>
             <div class="table-wrapper">
                 <table>
                     <thead><tr><th>Cliente</th><th>Deuda Actual</th><th>Abonar</th><th>Acción</th></tr></thead>
@@ -193,7 +183,7 @@
 
     <script>
       const firebaseConfig = {
-        apiKey: "AIzaSy...",
+        apiKey: "AIzaSyAgecNVaN2viV9q57FP2-hBinLaw4v2efI",
         authDomain: "sistema-motika.firebaseapp.com",
         databaseURL: "https://sistema-motika-default-rtdb.firebaseio.com",
         projectId: "sistema-motika",
@@ -204,7 +194,6 @@
       firebase.initializeApp(firebaseConfig);
       const db = firebase.database();
     </script>
-
     <script src="script.js"></script>
 </body>
 </html>
