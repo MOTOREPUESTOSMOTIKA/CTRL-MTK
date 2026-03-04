@@ -47,18 +47,49 @@ window.toggleMenu = function() {
 }
 
 /* --- DASHBOARD (PUNTO 1 Y 3) --- */
+/* --- DASHBOARD CORREGIDO --- */
 function renderDashboard() {
-    // Totales de la caja actual (Semana)
-    let cajaIng = 0, cajaGas = 0;
-    transacciones.forEach(t => t.tipo === 'ingreso' ? cajaIng += t.monto : cajaGas += t.monto);
+    // Totales de la caja actual (Sesión abierta)
+    let cajaIngresos = 0;
+    let cajaGastos = 0;
 
-    // Totales Históricos (Caja actual + Reportes cerrados)
-    let histIng = cajaIng, histGas = cajaGas;
+    transacciones.forEach(t => {
+        if (t.tipo === 'ingreso' || t.tipo === 'venta') {
+            cajaIngresos += t.monto;
+        } else if (t.tipo === 'gasto') {
+            cajaGastos += t.monto;
+        }
+    });
+
+    // Efectivo Real en Caja (Lo que deberías tener en mano)
+    let efectivoActual = cajaIngresos - cajaGastos;
+
+    // Totales Históricos (Reportes cerrados + Caja actual)
+    let histIng = cajaIngresos;
+    let histGas = cajaGastos;
     historialReportes.forEach(r => {
         histIng += r.totalIngresos;
         histGas += r.totalGastos;
     });
 
+    // Actualización de la Interfaz
+    // Sección: Resumen Histórico
+    document.getElementById('hist-ventas').innerText = `$${formatearNumero(histIng)}`;
+    document.getElementById('hist-gastos').innerText = `$${formatearNumero(histGas)}`;
+    document.getElementById('hist-ganancia').innerText = `$${formatearNumero(histIng - histGas)}`;
+
+    // Sección: Caja Actual (Efectivo)
+    document.getElementById('caja-ventas').innerText = `$${formatearNumero(cajaIngresos)}`;
+    document.getElementById('caja-gastos').innerText = `$${formatearNumero(cajaGastos)}`;
+    document.getElementById('balance-final').innerText = `$${formatearNumero(efectivoActual)}`;
+
+    // Valor del Inventario y Patrimonio
+    let valorCostoInv = productos.reduce((acc, p) => acc + (p.costo * (p.cantidad || 0)), 0);
+    document.getElementById('dash-valor-inv').innerText = `$${formatearNumero(valorCostoInv)}`;
+    
+    // Patrimonio = Valor mercancía + Efectivo en caja
+    document.getElementById('dash-patrimonio').innerText = `$${formatearNumero(valorCostoInv + efectivoActual)}`;
+}
     // Ganancia Real (Venta - Costo)
     let gananciaHistorial = 0;
     // Cálculo simplificado: Ingresos Totales - Gastos Totales
