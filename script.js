@@ -1,4 +1,4 @@
-console.log("Sistema Motika V2 - Firebase Activo");
+Console.log("Sistema Motika V2 - Firebase Activo");
 
 /* --- ESTADO GLOBAL --- */
 let productos = [];
@@ -46,13 +46,12 @@ window.toggleMenu = function() {
     if (window.innerWidth <= 768) sidebar.classList.toggle('active');
 }
 
-/* --- DASHBOARD (PUNTO 1 Y 3) --- */
 /* --- DASHBOARD CORREGIDO --- */
 function renderDashboard() {
-    // Totales de la caja actual (Sesión abierta)
     let cajaIngresos = 0;
     let cajaGastos = 0;
 
+    // Procesar transacciones actuales
     transacciones.forEach(t => {
         if (t.tipo === 'ingreso' || t.tipo === 'venta') {
             cajaIngresos += t.monto;
@@ -61,10 +60,9 @@ function renderDashboard() {
         }
     });
 
-    // Efectivo Real en Caja (Lo que deberías tener en mano)
     let efectivoActual = cajaIngresos - cajaGastos;
 
-    // Totales Históricos (Reportes cerrados + Caja actual)
+    // Totales Históricos
     let histIng = cajaIngresos;
     let histGas = cajaGastos;
     historialReportes.forEach(r => {
@@ -72,43 +70,21 @@ function renderDashboard() {
         histGas += r.totalGastos;
     });
 
-    // Actualización de la Interfaz
-    // Sección: Resumen Histórico
+    // Renderizar Interfaz
     document.getElementById('hist-ventas').innerText = `$${formatearNumero(histIng)}`;
     document.getElementById('hist-gastos').innerText = `$${formatearNumero(histGas)}`;
     document.getElementById('hist-ganancia').innerText = `$${formatearNumero(histIng - histGas)}`;
 
-    // Sección: Caja Actual (Efectivo)
     document.getElementById('caja-ventas').innerText = `$${formatearNumero(cajaIngresos)}`;
     document.getElementById('caja-gastos').innerText = `$${formatearNumero(cajaGastos)}`;
     document.getElementById('balance-final').innerText = `$${formatearNumero(efectivoActual)}`;
 
-    // Valor del Inventario y Patrimonio
     let valorCostoInv = productos.reduce((acc, p) => acc + (p.costo * (p.cantidad || 0)), 0);
     document.getElementById('dash-valor-inv').innerText = `$${formatearNumero(valorCostoInv)}`;
-    
-    // Patrimonio = Valor mercancía + Efectivo en caja
     document.getElementById('dash-patrimonio').innerText = `$${formatearNumero(valorCostoInv + efectivoActual)}`;
 }
-    // Ganancia Real (Venta - Costo)
-    let gananciaHistorial = 0;
-    // Cálculo simplificado: Ingresos Totales - Gastos Totales
-    let gananciaReal = histIng - histGas;
 
-    document.getElementById('hist-ventas').innerText = `$${formatearNumero(histIng)}`;
-    document.getElementById('hist-gastos').innerText = `$${formatearNumero(histGas)}`;
-    document.getElementById('hist-ganancia').innerText = `$${formatearNumero(gananciaReal)}`;
-
-    document.getElementById('caja-ventas').innerText = `$${formatearNumero(cajaIng)}`;
-    document.getElementById('caja-gastos').innerText = `$${formatearNumero(cajaGas)}`;
-    document.getElementById('balance-final').innerText = `$${formatearNumero(cajaIng - cajaGas)}`;
-
-    let valorCostoInv = productos.reduce((acc, p) => acc + (p.costo * p.cantidad), 0);
-    document.getElementById('dash-valor-inv').innerText = `$${formatearNumero(valorCostoInv)}`;
-    document.getElementById('dash-patrimonio').innerText = `$${formatearNumero(valorCostoInv + (cajaIng - cajaGas))}`;
-}
-
-/* --- INVENTARIO (PUNTO 4: EDITAR STOCK) --- */
+/* --- INVENTARIO --- */
 const fProd = document.getElementById('form-producto');
 if(fProd) {
     fProd.addEventListener('submit', (e) => {
@@ -159,29 +135,34 @@ function renderInventario() {
     document.getElementById('float-venta').innerText = `$${formatearNumero(vTotal)}`;
 }
 
-/* --- GASTOS (PUNTO 2: DESCONTAR EFECTIVO) --- */
+/* --- GASTOS OPERATIVOS CORREGIDOS --- */
 const fGastoLog = document.getElementById('form-gastos-diarios');
 if(fGastoLog) {
     fGastoLog.addEventListener('submit', (e) => {
         e.preventDefault();
         const monto = limpiarNumero(document.getElementById('gasto-monto-op').value);
         const desc = document.getElementById('gasto-desc-op').value;
+        const catSelect = document.querySelector('#form-gastos-diarios select');
+        const categoria = catSelect ? catSelect.value : "Gasto";
         
-        // Se registra como gasto en transacciones para descontar del balance actual
-        transacciones.push({
-            id: Date.now(),
-            tipo: 'gasto',
-            desc: `Gasto Operativo: ${desc}`,
-            monto: monto,
-            fecha: new Date().toLocaleDateString()
-        });
-        actualizarTodo();
-        fGastoLog.reset();
-        alert("Gasto registrado y descontado de caja.");
+        if(monto > 0) {
+            transacciones.push({
+                id: Date.now(),
+                tipo: 'gasto',
+                desc: `[${categoria}] ${desc}`,
+                monto: monto,
+                fecha: new Date().toLocaleDateString()
+            });
+            actualizarTodo();
+            fGastoLog.reset();
+            alert("Gasto registrado y descontado del efectivo.");
+        } else {
+            alert("Por favor ingrese un monto válido.");
+        }
     });
 }
 
-/* --- PEDIDOS (PUNTO 5: ENTREGAR POR ITEMS) --- */
+/* --- PEDIDOS --- */
 window.agregarFila = function() {
     const div = document.createElement('div');
     div.className = 'fila-producto';
@@ -225,18 +206,9 @@ if(fEnc) {
 window.entregarItem = function(pedidoId, itemIndex) {
     const p = encargos.find(x => x.id === pedidoId);
     const item = p.items[itemIndex];
-    
     const r = confirm(`¿Entregar ${item.nombre}? \nOK: Sumar a Caja \nCANCELAR: Poner como Deuda`);
     
-    if(r) {
-        // Sumar a caja (Asumimos que el precio ya está en el total, aquí solo marcamos entrega)
-        alert("Entregado y sumado a caja mentalmente (el abono ya se registró)");
-    } else {
-        alert("Marcado para deuda");
-    }
-    
     item.entregado = true;
-    // Si todos están entregados, marcar pedido como finalizado
     if(p.items.every(i => i.entregado)) p.entregadoTotal = true;
     actualizarTodo();
 }
@@ -245,15 +217,13 @@ window.entregarTodoPedido = function(id) {
     const p = encargos.find(x => x.id === id);
     const tipoCaja = confirm("¿Sumar saldo restante a CAJA (Venta)? \nSi cancela, se mantendrá como DEUDA.");
     
-    if(tipoCaja) {
-        if(p.deuda > 0) {
-            transacciones.push({
-                id: Date.now(), tipo: 'ingreso', desc: `Pago Final Pedido: ${p.cliente}`,
-                monto: p.deuda, fecha: new Date().toLocaleDateString()
-            });
-            p.abono += p.deuda;
-            p.deuda = 0;
-        }
+    if(tipoCaja && p.deuda > 0) {
+        transacciones.push({
+            id: Date.now(), tipo: 'ingreso', desc: `Pago Final Pedido: ${p.cliente}`,
+            monto: p.deuda, fecha: new Date().toLocaleDateString()
+        });
+        p.abono += p.deuda;
+        p.deuda = 0;
     }
     p.items.forEach(i => i.entregado = true);
     p.entregadoTotal = true;
@@ -280,21 +250,19 @@ function renderPedidos() {
     `).join('');
 }
 
-/* --- DEUDORES (PUNTO 6: INCREMENTAR DEUDA) --- */
+/* --- DEUDORES --- */
 const fDeuda = document.getElementById('form-deuda-directa');
 if(fDeuda) {
     fDeuda.addEventListener('submit', (e) => {
         e.preventDefault(); 
         const m = limpiarNumero(document.getElementById('deuda-monto').value);
         const nombreBusqueda = document.getElementById('deuda-cliente').value.trim();
-        
-        // Buscar si ya existe el deudor
         const existente = encargos.find(en => en.cliente.toLowerCase() === nombreBusqueda.toLowerCase());
         
         if(existente) {
             existente.deuda += m;
             existente.total += m;
-            alert(`Deuda incrementada a ${existente.cliente}. Nueva deuda: $${formatearNumero(existente.deuda)}`);
+            alert(`Deuda incrementada a ${existente.cliente}.`);
         } else {
             encargos.push({
                 id: Date.now(), cliente: nombreBusqueda, total: m, abono: 0, deuda: m, entregadoTotal: true
@@ -335,7 +303,7 @@ function renderFinanzas() {
     const lista = document.getElementById('lista-transacciones');
     if(lista) {
         lista.innerHTML = transacciones.map(t => `
-            <tr><td>${t.fecha}</td><td>${t.desc}</td><td style="color:${t.tipo==='ingreso'?'green':'red'}">$${formatearNumero(t.monto)}</td></tr>
+            <tr><td>${t.fecha}</td><td>${t.desc}</td><td style="color:${t.tipo==='ingreso' || t.tipo==='venta' ?'green':'red'}">$${formatearNumero(t.monto)}</td></tr>
         `).reverse().join('');
     }
 }
@@ -343,7 +311,7 @@ function renderFinanzas() {
 window.cerrarCaja = function() {
     if (!confirm("¿Cerrar caja ahora? Se limpiarán las ventas diarias.")) return;
     let ing = 0, gas = 0;
-    transacciones.forEach(t => t.tipo === 'ingreso' ? ing += t.monto : gas += t.monto);
+    transacciones.forEach(t => (t.tipo === 'ingreso' || t.tipo === 'venta') ? ing += t.monto : gas += t.monto);
     historialReportes.push({
         id: Date.now(), fecha: new Date().toLocaleString(),
         totalIngresos: ing, totalGastos: gas, balance: ing - gas
@@ -357,7 +325,7 @@ function renderHistorialReportes() {
     if(h) h.innerHTML = historialReportes.map(r => `
         <div class="card" style="border-left:5px solid green; margin-bottom:10px;">
             <h4>📅 ${r.fecha}</h4>
-            <p>Balance: $${formatearNumero(r.balance)} (Ingresos: $${formatearNumero(r.totalIngresos)} | Gastos: $${formatearNumero(r.totalGastos)})</p>
+            <p>Balance: $${formatearNumero(r.balance)} (Ing: $${formatearNumero(r.totalIngresos)} | Gast: $${formatearNumero(r.totalGastos)})</p>
         </div>
     `).reverse().join('');
 }
