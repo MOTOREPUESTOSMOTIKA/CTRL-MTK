@@ -399,4 +399,4 @@ window.toggleProductoSelector = function() {
     document.getElementById('trans-desc').style.display = isVenta ? 'none' : 'block';
 }
 
-window.onload = () => { if(window.toggleProductoSelector) window.toggleProductoSelector(); }; 
+window.onload = () => { if(window.toggleProductoSelector) window.toggleProductoSelector(); };
