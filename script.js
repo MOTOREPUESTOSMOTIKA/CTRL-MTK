@@ -408,3 +408,189 @@ window.generarListaCompras = function() {
 }
 
 window.onload = () => { if(window.toggleProductoSelector) window.toggleProductoSelector(); }; 
+
+/* =========================================================
+AJUSTES MOTIKA V3 (SIN MODIFICAR EL SCRIPT ORIGINAL)
+ESTE BLOQUE SOLO AGREGA FUNCIONALIDADES
+========================================================= */
+
+
+/* =====================================
+1. PEDIDOS SIN TOTAL OBLIGATORIO
+===================================== */
+
+document.addEventListener("DOMContentLoaded", () => {
+
+    const campoTotal = document.getElementById("enc-total");
+
+    if(campoTotal){
+
+        campoTotal.removeAttribute("required");
+
+        campoTotal.addEventListener("blur",()=>{
+            if(campoTotal.value.trim()===""){
+                campoTotal.value = "0";
+            }
+        });
+
+    }
+
+});
+
+
+/* =====================================
+2. BUSCADOR INTELIGENTE DE PRODUCTOS
+EN VENTAS
+===================================== */
+
+window.inicializarBuscadorProductos = function(){
+
+    const inputBusqueda = document.getElementById("busqueda-producto");
+
+    if(!inputBusqueda) return;
+
+    let contenedor = document.createElement("div");
+    contenedor.id="resultados-busqueda-productos";
+    contenedor.style.position="absolute";
+    contenedor.style.background="#fff";
+    contenedor.style.border="1px solid #ccc";
+    contenedor.style.zIndex="9999";
+    contenedor.style.maxHeight="200px";
+    contenedor.style.overflowY="auto";
+
+    inputBusqueda.parentNode.appendChild(contenedor);
+
+    inputBusqueda.addEventListener("input", function(){
+
+        const texto = this.value.toLowerCase();
+
+        if(!texto){
+            contenedor.innerHTML="";
+            return;
+        }
+
+        const coincidencias = productos.filter(p =>
+            p.nombre.toLowerCase().includes(texto)
+        );
+
+        contenedor.innerHTML = coincidencias.map(p=>`
+            <div style="padding:6px;cursor:pointer"
+                 onclick="seleccionarProductoBuscado(${p.id},'${p.nombre.replace(/'/g,"")}')">
+                 ${p.nombre} (Stock: ${p.cantidad})
+            </div>
+        `).join("");
+
+    });
+
+};
+
+
+window.seleccionarProductoBuscado = function(id,nombre){
+
+    const select = document.getElementById("select-producto-id");
+    const inputBusqueda = document.getElementById("busqueda-producto");
+    const contenedor = document.getElementById("resultados-busqueda-productos");
+
+    if(select) select.value=id;
+    if(inputBusqueda) inputBusqueda.value=nombre;
+    if(contenedor) contenedor.innerHTML="";
+
+};
+
+
+
+/* =====================================
+3. LISTA DE PEDIDOS CON CHECKLIST
+===================================== */
+
+window.generarListaPedidosCompras = function(){
+
+    const contenedor = document.getElementById("lista-pedidos-compras");
+
+    if(!contenedor) return;
+
+    let html="";
+
+    encargos.forEach(pedido=>{
+
+        html+=`
+        <div style="margin-bottom:15px;border:1px solid #ccc;padding:10px">
+        <strong>Cliente: ${pedido.cliente}</strong>
+        `;
+
+        pedido.items.forEach((item,index)=>{
+
+            if(item.conseguido===undefined){
+                item.conseguido=false;
+            }
+
+            html+=`
+            <div style="margin-top:6px">
+                <input type="checkbox"
+                ${item.conseguido?"checked":""}
+                onchange="marcarProductoPedido(${pedido.id},${index},this.checked)">
+
+                ${item.nombre} x${item.cant}
+            </div>
+            `;
+
+        });
+
+        html+=`</div>`;
+
+    });
+
+    contenedor.innerHTML=html;
+
+};
+
+
+
+window.marcarProductoPedido = function(pedidoId,index,estado){
+
+    const pedido = encargos.find(p=>p.id===pedidoId);
+
+    if(!pedido) return;
+
+    pedido.items[index].conseguido = estado;
+
+    const faltantes = pedido.items.filter(i=>!i.conseguido);
+    const encontrados = pedido.items.filter(i=>i.conseguido);
+
+    pedido.items = [...faltantes,...encontrados];
+
+    actualizarTodo();
+
+};
+
+
+
+/* =====================================
+4. AUTO ACTUALIZAR LISTA PEDIDOS
+===================================== */
+
+const renderOriginal = renderTodo;
+
+renderTodo = function(){
+
+    renderOriginal();
+
+    if(window.generarListaPedidosCompras){
+        generarListaPedidosCompras();
+    }
+
+};
+
+
+
+/* =====================================
+5. INICIAR BUSCADOR AUTOMÁTICO
+===================================== */
+
+window.addEventListener("load",()=>{
+
+    if(window.inicializarBuscadorProductos){
+        inicializarBuscadorProductos();
+    }
+
+});
