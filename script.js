@@ -1,10 +1,11 @@
-Console.log("Sistema Motika V2 - Firebase Activo");
+console.log("Sistema Motika V2 - Firebase Activo");
 
 /* --- ESTADO GLOBAL --- */
 let productos = [];
 let transacciones = [];
 let encargos = [];
 let historialReportes = [];
+let gastosOperativos = []; // Nueva lista para persistencia de gastos operativos
 
 /* --- FUNCIONES DE APOYO --- */
 function limpiarNumero(valor) {
@@ -24,13 +25,14 @@ db.ref('motika_data/').on('value', (snapshot) => {
         transacciones = data.transacciones || [];
         encargos = data.encargos || [];
         historialReportes = data.historialReportes || [];
+        gastosOperativos = data.gastosOperativos || [];
         renderTodo();
     }
 });
 
 function actualizarTodo() {
     db.ref('motika_data/').set({
-        productos, transacciones, encargos, historialReportes
+        productos, transacciones, encargos, historialReportes, gastosOperativos
     }).catch(error => console.error("Error Firebase:", error));
     renderTodo();
 }
@@ -46,22 +48,17 @@ window.toggleMenu = function() {
     if (window.innerWidth <= 768) sidebar.classList.toggle('active');
 }
 
-/* --- DASHBOARD (PUNTO 1 Y 3) --- */
+/* --- DASHBOARD --- */
 function renderDashboard() {
-    // Totales de la caja actual (Semana)
     let cajaIng = 0, cajaGas = 0;
     transacciones.forEach(t => t.tipo === 'ingreso' ? cajaIng += t.monto : cajaGas += t.monto);
 
-    // Totales Históricos (Caja actual + Reportes cerrados)
     let histIng = cajaIng, histGas = cajaGas;
     historialReportes.forEach(r => {
         histIng += r.totalIngresos;
         histGas += r.totalGastos;
     });
 
-    // Ganancia Real (Venta - Costo)
-    let gananciaHistorial = 0;
-    // Cálculo simplificado: Ingresos Totales - Gastos Totales
     let gananciaReal = histIng - histGas;
 
     document.getElementById('hist-ventas').innerText = `$${formatearNumero(histIng)}`;
@@ -77,7 +74,7 @@ function renderDashboard() {
     document.getElementById('dash-patrimonio').innerText = `$${formatearNumero(valorCostoInv + (cajaIng - cajaGas))}`;
 }
 
-/* --- INVENTARIO (PUNTO 4: EDITAR STOCK) --- */
+/* --- INVENTARIO --- */
 const fProd = document.getElementById('form-producto');
 if(fProd) {
     fProd.addEventListener('submit', (e) => {
@@ -128,29 +125,55 @@ function renderInventario() {
     document.getElementById('float-venta').innerText = `$${formatearNumero(vTotal)}`;
 }
 
-/* --- GASTOS (PUNTO 2: DESCONTAR EFECTIVO) --- */
+/* --- GASTOS OPERATIVOS --- */
 const fGastoLog = document.getElementById('form-gastos-diarios');
 if(fGastoLog) {
     fGastoLog.addEventListener('submit', (e) => {
         e.preventDefault();
         const monto = limpiarNumero(document.getElementById('gasto-monto-op').value);
         const desc = document.getElementById('gasto-desc-op').value;
+        const cat = document.getElementById('gasto-categoria').value;
+        const fecha = document.getElementById('gasto-fecha').value || new Date().toLocaleDateString();
         
-        // Se registra como gasto en transacciones para descontar del balance actual
-        transacciones.push({
+        const nuevoGasto = {
             id: Date.now(),
+            fecha,
+            cat,
+            desc,
+            monto
+        };
+
+        gastosOperativos.push(nuevoGasto);
+        
+        transacciones.push({
+            id: Date.now() + 1,
             tipo: 'gasto',
-            desc: `Gasto Operativo: ${desc}`,
+            desc: `[${cat}] ${desc}`,
             monto: monto,
-            fecha: new Date().toLocaleDateString()
+            fecha: fecha
         });
+
         actualizarTodo();
         fGastoLog.reset();
         alert("Gasto registrado y descontado de caja.");
     });
 }
 
-/* --- PEDIDOS (PUNTO 5: ENTREGAR POR ITEMS) --- */
+function renderGastos() {
+    const tabla = document.getElementById('tabla-gastos-logistica');
+    if(tabla) {
+        tabla.innerHTML = gastosOperativos.map(g => `
+            <tr>
+                <td>${g.fecha}</td>
+                <td>${g.cat}</td>
+                <td>${g.desc}</td>
+                <td style="color:red">-$${formatearNumero(g.monto)}</td>
+            </tr>
+        `).reverse().join('');
+    }
+}
+
+/* --- PEDIDOS --- */
 window.agregarFila = function() {
     const div = document.createElement('div');
     div.className = 'fila-producto';
@@ -181,7 +204,7 @@ if(fEnc) {
         
         if(abono > 0) {
             transacciones.push({
-                id: Date.now() + 1, tipo: 'ingreso', desc: `Abono inicial: ${cliente}`,
+                id: Date.now() + 1, tipo: 'ingreso', desc: `Abono inicial pedido: ${cliente}`,
                 monto: abono, fecha: new Date().toLocaleDateString()
             });
         }
@@ -191,33 +214,38 @@ if(fEnc) {
     });
 }
 
-window.entregarItem = function(pedidoId, itemIndex) {
+window.procesarEntregaItem = function(pedidoId, itemIndex, modo) {
     const p = encargos.find(x => x.id === pedidoId);
     const item = p.items[itemIndex];
     
-    const r = confirm(`¿Entregar ${item.nombre}? \nOK: Sumar a Caja \nCANCELAR: Poner como Deuda`);
-    
-    if(r) {
-        // Sumar a caja (Asumimos que el precio ya está en el total, aquí solo marcamos entrega)
-        alert("Entregado y sumado a caja mentalmente (el abono ya se registró)");
+    // Si el modo es 'venta', preguntamos el valor de este ítem para sumar a caja
+    if(modo === 'venta') {
+        const valor = prompt(`¿Qué valor sumar a caja por la entrega de ${item.nombre}?`, "0");
+        const monto = limpiarNumero(valor);
+        if(monto > 0) {
+            transacciones.push({
+                id: Date.now(), tipo: 'ingreso', desc: `Entrega: ${item.nombre} (Cliente: ${p.cliente})`,
+                monto: monto, fecha: new Date().toLocaleDateString()
+            });
+            p.abono += monto;
+            p.deuda = Math.max(0, p.total - p.abono);
+        }
     } else {
-        alert("Marcado para deuda");
+        alert(`${item.nombre} enviado a deuda pendiente.`);
     }
     
     item.entregado = true;
-    // Si todos están entregados, marcar pedido como finalizado
     if(p.items.every(i => i.entregado)) p.entregadoTotal = true;
     actualizarTodo();
 }
 
 window.entregarTodoPedido = function(id) {
     const p = encargos.find(x => x.id === id);
-    const tipoCaja = confirm("¿Sumar saldo restante a CAJA (Venta)? \nSi cancela, se mantendrá como DEUDA.");
-    
-    if(tipoCaja) {
-        if(p.deuda > 0) {
+    if(p.deuda > 0) {
+        const confirmarVenta = confirm(`¿Desea que el saldo de $${formatearNumero(p.deuda)} entre como EFECTIVO a caja hoy?`);
+        if(confirmarVenta) {
             transacciones.push({
-                id: Date.now(), tipo: 'ingreso', desc: `Pago Final Pedido: ${p.cliente}`,
+                id: Date.now(), tipo: 'ingreso', desc: `Cierre total pedido: ${p.cliente}`,
                 monto: p.deuda, fecha: new Date().toLocaleDateString()
             });
             p.abono += p.deuda;
@@ -232,41 +260,44 @@ window.entregarTodoPedido = function(id) {
 function renderPedidos() {
     const c = document.getElementById('lista-pedidos-clientes');
     if(!c) return;
-    c.innerHTML = encargos.filter(e => e.items && !e.entregadoTotal).map(e => `
-        <div class="card">
+    c.innerHTML = encargos.filter(e => !e.entregadoTotal).map(e => `
+        <div class="card" style="border-left: 5px solid #4A90E2">
             <strong>👤 ${e.cliente}</strong><br>
-            <small>Debe: $${formatearNumero(e.deuda)}</small>
+            <small>Total: $${formatearNumero(e.total)} | Debe: $${formatearNumero(e.deuda)}</small>
             <div style="margin:10px 0; border-top:1px solid #eee; padding-top:5px;">
                 ${e.items.map((it, idx) => `
-                    <div style="display:flex; justify-content:space-between; font-size:13px;">
-                        <span style="${it.entregado?'text-decoration:line-through; color:gray':''}">> ${it.nombre} (x${it.cant})</span>
-                        ${!it.entregado ? `<button onclick="entregarItem(${e.id}, ${idx})">Entregar</button>` : '✅'}
+                    <div style="margin-bottom:8px; border-bottom:1px solid #f9f9f9; padding-bottom:5px;">
+                        <span style="${it.entregado?'text-decoration:line-through; color:gray':''}">${it.nombre} (x${it.cant})</span>
+                        ${!it.entregado ? `
+                            <div style="display:flex; gap:5px; margin-top:5px;">
+                                <button onclick="procesarEntregaItem(${e.id}, ${idx}, 'venta')" style="background:#28a745; color:white; font-size:11px; padding:2px 5px;">Venta 💰</button>
+                                <button onclick="procesarEntregaItem(${e.id}, ${idx}, 'deuda')" style="background:#dc3545; color:white; font-size:11px; padding:2px 5px;">Deuda 📉</button>
+                            </div>
+                        ` : ' ✅'}
                     </div>
                 `).join('')}
             </div>
-            <button onclick="entregarTodoPedido(${e.id})" style="width:100%; background:green; color:white;">Entregar Todo</button>
+            <button onclick="entregarTodoPedido(${e.id})" style="width:100%; background:#4A90E2; color:white;">Finalizar Todo</button>
         </div>
     `).join('');
 }
 
-/* --- DEUDORES (PUNTO 6: INCREMENTAR DEUDA) --- */
+/* --- DEUDORES --- */
 const fDeuda = document.getElementById('form-deuda-directa');
 if(fDeuda) {
     fDeuda.addEventListener('submit', (e) => {
         e.preventDefault(); 
         const m = limpiarNumero(document.getElementById('deuda-monto').value);
         const nombreBusqueda = document.getElementById('deuda-cliente').value.trim();
-        
-        // Buscar si ya existe el deudor
         const existente = encargos.find(en => en.cliente.toLowerCase() === nombreBusqueda.toLowerCase());
         
         if(existente) {
             existente.deuda += m;
             existente.total += m;
-            alert(`Deuda incrementada a ${existente.cliente}. Nueva deuda: $${formatearNumero(existente.deuda)}`);
+            alert(`Deuda incrementada. Nueva deuda de ${existente.cliente}: $${formatearNumero(existente.deuda)}`);
         } else {
             encargos.push({
-                id: Date.now(), cliente: nombreBusqueda, total: m, abono: 0, deuda: m, entregadoTotal: true
+                id: Date.now(), cliente: nombreBusqueda, total: m, abono: 0, deuda: m, entregadoTotal: true, items: []
             });
             alert("Nuevo deudor registrado.");
         }
@@ -283,7 +314,7 @@ window.abonar = function(id) {
     e.deuda -= monto;
     e.abono += monto;
     transacciones.push({
-        id: Date.now(), tipo: 'ingreso', desc: `Abono de: ${e.cliente}`, 
+        id: Date.now(), tipo: 'ingreso', desc: `Abono de deudor: ${e.cliente}`, 
         monto: monto, fecha: new Date().toLocaleDateString()
     });
     actualizarTodo();
@@ -294,7 +325,7 @@ function renderDeudas() {
     if(!t) return;
     t.innerHTML = encargos.filter(e => e.deuda > 0).map(e => `
         <tr><td>${e.cliente}</td><td style="color:red">$${formatearNumero(e.deuda)}</td>
-        <td><input type="number" id="in-abono-${e.id}" style="width:70px"></td>
+        <td><input type="number" id="in-abono-${e.id}" style="width:80px"></td>
         <td><button onclick="abonar(${e.id})">Abonar</button></td></tr>
     `).join('');
 }
@@ -304,13 +335,13 @@ function renderFinanzas() {
     const lista = document.getElementById('lista-transacciones');
     if(lista) {
         lista.innerHTML = transacciones.map(t => `
-            <tr><td>${t.fecha}</td><td>${t.desc}</td><td style="color:${t.tipo==='ingreso'?'green':'red'}">$${formatearNumero(t.monto)}</td></tr>
+            <tr><td>${t.fecha}</td><td>${t.desc}</td><td style="color:${t.tipo==='ingreso'?'green':'red'}">${t.tipo==='ingreso'?'':'-'}$${formatearNumero(t.monto)}</td></tr>
         `).reverse().join('');
     }
 }
 
 window.cerrarCaja = function() {
-    if (!confirm("¿Cerrar caja ahora? Se limpiarán las ventas diarias.")) return;
+    if (!confirm("¿Cerrar caja ahora? Se archivará el movimiento actual.")) return;
     let ing = 0, gas = 0;
     transacciones.forEach(t => t.tipo === 'ingreso' ? ing += t.monto : gas += t.monto);
     historialReportes.push({
@@ -318,29 +349,22 @@ window.cerrarCaja = function() {
         totalIngresos: ing, totalGastos: gas, balance: ing - gas
     });
     transacciones = []; 
+    gastosOperativos = []; 
     actualizarTodo();
 }
 
 function renderHistorialReportes() {
     const h = document.getElementById('historial-reportes');
     if(h) h.innerHTML = historialReportes.map(r => `
-        <div class="card" style="border-left:5px solid green; margin-bottom:10px;">
+        <div class="card" style="border-left:5px solid #333;">
             <h4>📅 ${r.fecha}</h4>
-            <p>Balance: $${formatearNumero(r.balance)} (Ingresos: $${formatearNumero(r.totalIngresos)} | Gastos: $${formatearNumero(r.totalGastos)})</p>
+            <p><strong>Balance: $${formatearNumero(r.balance)}</strong></p>
+            <small>Ingresos: $${formatearNumero(r.totalIngresos)} | Gastos: $${formatearNumero(r.totalGastos)}</small>
         </div>
     `).reverse().join('');
 }
 
-function renderTodo() {
-    renderDashboard();
-    renderInventario();
-    renderFinanzas();
-    renderPedidos();
-    renderDeudas();
-    renderHistorialReportes();
-}
-
-/* --- BUSQUEDA VENTAS --- */
+/* --- BÚSQUEDA Y VENTAS DIRECTAS --- */
 const inputBusqueda = document.getElementById('input-buscar-prod');
 if (inputBusqueda) {
     inputBusqueda.addEventListener('input', () => {
@@ -350,7 +374,7 @@ if (inputBusqueda) {
         if (texto.length < 1) return;
         productos.filter(p => p.nombre.toLowerCase().includes(texto) && p.cantidad > 0).forEach(p => {
             const d = document.createElement('div');
-            d.innerHTML = `${p.nombre} ($${p.precio})`;
+            d.innerHTML = `${p.nombre} (Stock: ${p.cantidad} | $${formatearNumero(p.precio)})`;
             d.style = "padding:10px; cursor:pointer; border-bottom:1px solid #eee;";
             d.onclick = () => {
                 inputBusqueda.value = p.nombre;
@@ -377,9 +401,10 @@ if(fTrans) {
             if(p && p.cantidad >= cant) {
                 p.cantidad -= cant;
                 monto = p.precio * cant;
-                desc = `Venta: ${p.nombre} x${cant}`;
-            } else { return alert("Error en producto o stock"); }
+                desc = `Venta Stock: ${p.nombre} x${cant}`;
+            } else { return alert("Stock insuficiente o producto no seleccionado"); }
         }
+        
         transacciones.push({
             id: Date.now(), tipo: (tipo === 'gasto' ? 'gasto' : 'ingreso'),
             desc, monto, fecha: new Date().toLocaleDateString()
@@ -399,4 +424,31 @@ window.toggleProductoSelector = function() {
     document.getElementById('trans-desc').style.display = isVenta ? 'none' : 'block';
 }
 
+function renderTodo() {
+    renderDashboard();
+    renderInventario();
+    renderFinanzas();
+    renderGastos();
+    renderPedidos();
+    renderDeudas();
+    renderHistorialReportes();
+}
+
 window.onload = () => { if(window.toggleProductoSelector) window.toggleProductoSelector(); };
+
+window.generarListaCompras = function() {
+    const lista = productos.filter(p => p.cantidad <= 2);
+    const contenedor = document.getElementById('seccion-lista-compras');
+    const ul = document.getElementById('lista-compras-items');
+    ul.innerHTML = '';
+    if(lista.length === 0) {
+        ul.innerHTML = '<li>✅ Todo el stock está al día.</li>';
+    } else {
+        lista.forEach(p => {
+            const li = document.createElement('li');
+            li.innerHTML = `⚠️ <b>${p.nombre}</b>: Quedan ${p.cantidad} unidades.`;
+            ul.appendChild(li);
+        });
+    }
+    contenedor.style.display = 'block';
+}
