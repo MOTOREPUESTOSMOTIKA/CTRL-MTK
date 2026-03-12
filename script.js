@@ -641,3 +641,110 @@ window.seleccionarProductoVenta = function(id,nombre){
 
 /* INICIAR BUSCADOR */
 window.addEventListener("load", iniciarBuscadorProductos);
+/* =====================================
+LISTA INTELIGENTE DE COMPRAS DESDE PEDIDOS
+===================================== */
+
+let listaCompras = [];
+
+window.generarListaCompras = function(){
+
+    const contenedor = document.getElementById("seccion-lista-compras");
+    const ul = document.getElementById("lista-compras-items");
+
+    let acumulado = {};
+
+    encargos.forEach(pedido => {
+
+        pedido.items.forEach(item => {
+
+            if(item.entregado) return;
+
+            const nombre = item.nombre.toLowerCase();
+
+            if(!acumulado[nombre]){
+                acumulado[nombre] = {
+                    nombre: item.nombre,
+                    cantidad: 0,
+                    comprado:false
+                };
+            }
+
+            acumulado[nombre].cantidad += item.cant;
+
+        });
+
+    });
+
+    listaCompras = Object.values(acumulado);
+
+    renderListaCompras();
+
+    contenedor.style.display = "block";
+}
+
+
+function renderListaCompras(){
+
+    const ul = document.getElementById("lista-compras-items");
+
+    if(!ul) return;
+
+    const pendientes = listaCompras.filter(p=>!p.comprado);
+    const comprados = listaCompras.filter(p=>p.comprado);
+
+    ul.innerHTML = [...pendientes,...comprados].map((p,i)=>`
+
+        <li style="margin-bottom:6px">
+
+        <input type="checkbox"
+        ${p.comprado?"checked":""}
+        onchange="marcarComprado(${i})">
+
+        <b>${p.nombre}</b> x${p.cantidad}
+
+        </li>
+
+    `).join("");
+
+}
+
+
+window.marcarComprado = function(index){
+
+    listaCompras[index].comprado = !listaCompras[index].comprado;
+
+    renderListaCompras();
+
+}
+
+
+/* =====================================
+GENERAR PRODUCTOS LISTOS PARA ENTREGA
+===================================== */
+
+window.prepararEntregas = function(){
+
+    const comprados = listaCompras.filter(p=>p.comprado);
+
+    encargos.forEach(pedido => {
+
+        pedido.items.forEach(item => {
+
+            const match = comprados.find(p=>
+                p.nombre.toLowerCase() === item.nombre.toLowerCase()
+            );
+
+            if(match){
+                item.entregado = false;
+            }
+
+        });
+
+    });
+
+    actualizarTodo();
+
+    alert("Productos comprados listos para entregar");
+
+}
