@@ -594,3 +594,50 @@ window.addEventListener("load",()=>{
     }
 
 });
+/* =====================================
+BUSCADOR DE PRODUCTOS PARA TU HTML REAL
+===================================== */
+
+function iniciarBuscadorProductos() {
+
+    const input = document.getElementById("input-buscar-prod");
+    const lista = document.getElementById("lista-sugerencias");
+    const hidden = document.getElementById("select-producto-id");
+
+    if(!input || !lista || !hidden) return;
+
+    input.addEventListener("input", function(){
+
+        const texto = this.value.toLowerCase().trim();
+
+        if(texto === ""){
+            lista.innerHTML = "";
+            return;
+        }
+
+        const resultados = productos.filter(p =>
+            p.nombre.toLowerCase().includes(texto)
+        );
+
+        lista.innerHTML = resultados.map(p => `
+            <div style="padding:6px; cursor:pointer;"
+                 onclick="seleccionarProductoVenta(${p.id}, '${p.nombre.replace(/'/g,"")}')">
+                 ${p.nombre} (Stock: ${p.cantidad})
+            </div>
+        `).join("");
+
+    });
+
+}
+
+window.seleccionarProductoVenta = function(id,nombre){
+
+    document.getElementById("input-buscar-prod").value = nombre;
+    document.getElementById("select-producto-id").value = id;
+    document.getElementById("lista-sugerencias").innerHTML = "";
+
+};
+
+
+/* INICIAR BUSCADOR */
+window.addEventListener("load", iniciarBuscadorProductos);
