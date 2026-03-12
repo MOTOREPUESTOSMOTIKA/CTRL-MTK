@@ -58,3 +58,7 @@ input, select { padding: 10px; border: 1px solid #ddd; border-radius: 5px; flex:
     .dashboard-grid { grid-template-columns: 1fr; }
     .floating-inventory { left: 0; }
 }
+.compra-item.marcado { text-decoration: line-through; opacity: 0.6; color: gray; }
+.sugerencia-item { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; transition: 0.2s; }
+.sugerencia-item:hover { background: #f0f7ff; }
+
