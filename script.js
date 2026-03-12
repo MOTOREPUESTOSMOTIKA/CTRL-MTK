@@ -1,12 +1,11 @@
-console.log("Sistema Motika V3 - Contabilidad Profesional Activa");
+
+Console.log("Sistema Motika V2 - Firebase Activo");
 
 /* --- ESTADO GLOBAL --- */
 let productos = [];
-let transacciones = []; 
-let encargos = []; 
-let historialReportes = []; 
-let historialGastos = []; 
-let historialAbonos = []; 
+let transacciones = [];
+let encargos = [];
+let historialReportes = [];
 
 /* --- FUNCIONES DE APOYO --- */
 function limpiarNumero(valor) {
@@ -26,16 +25,15 @@ db.ref('motika_data/').on('value', (snapshot) => {
         transacciones = data.transacciones || [];
         encargos = data.encargos || [];
         historialReportes = data.historialReportes || [];
-        historialGastos = data.historialGastos || [];
-        historialAbonos = data.historialAbonos || [];
         renderTodo();
     }
 });
 
 function actualizarTodo() {
-    return db.ref('motika_data/').set({
-        productos, transacciones, encargos, historialReportes, historialGastos, historialAbonos
+    db.ref('motika_data/').set({
+        productos, transacciones, encargos, historialReportes
     }).catch(error => console.error("Error Firebase:", error));
+    renderTodo();
 }
 
 /* --- NAVEGACIÓN --- */
@@ -49,34 +47,27 @@ window.toggleMenu = function() {
     if (window.innerWidth <= 768) sidebar.classList.toggle('active');
 }
 
-/* --- DASHBOARD PROFESIONAL --- */
+/* --- DASHBOARD (PUNTO 1 Y 3) --- */
 function renderDashboard() {
-
+    // Totales de la caja actual (Semana)
     let cajaIng = 0, cajaGas = 0;
     transacciones.forEach(t => t.tipo === 'ingreso' ? cajaIng += t.monto : cajaGas += t.monto);
 
-    let ventasTotales = 0, costoDeLoVendido = 0, gastosTotales = 0;
-
+    // Totales Históricos (Caja actual + Reportes cerrados)
+    let histIng = cajaIng, histGas = cajaGas;
     historialReportes.forEach(r => {
-        ventasTotales += r.totalIngresos;
-        gastosTotales += r.totalGastos;
-        costoDeLoVendido += (r.costoVentas || 0);
+        histIng += r.totalIngresos;
+        histGas += r.totalGastos;
     });
 
-    transacciones.forEach(t => {
-        if(t.tipo === 'ingreso'){
-            ventasTotales += t.monto;
-            costoDeLoVendido += (t.costoAsociado || 0);
-        }else{
-            gastosTotales += t.monto;
-        }
-    });
+    // Ganancia Real (Venta - Costo)
+    let gananciaHistorial = 0;
+    // Cálculo simplificado: Ingresos Totales - Gastos Totales
+    let gananciaReal = histIng - histGas;
 
-    let gananciaNeta = ventasTotales - costoDeLoVendido - gastosTotales;
-
-    document.getElementById('hist-ventas').innerText = `$${formatearNumero(ventasTotales)}`;
-    document.getElementById('hist-gastos').innerText = `$${formatearNumero(gastosTotales)}`;
-    document.getElementById('hist-ganancia').innerText = `$${formatearNumero(gananciaNeta)}`;
+    document.getElementById('hist-ventas').innerText = `$${formatearNumero(histIng)}`;
+    document.getElementById('hist-gastos').innerText = `$${formatearNumero(histGas)}`;
+    document.getElementById('hist-ganancia').innerText = `$${formatearNumero(gananciaReal)}`;
 
     document.getElementById('caja-ventas').innerText = `$${formatearNumero(cajaIng)}`;
     document.getElementById('caja-gastos').innerText = `$${formatearNumero(cajaGas)}`;
@@ -85,15 +76,13 @@ function renderDashboard() {
     let valorCostoInv = productos.reduce((acc, p) => acc + (p.costo * p.cantidad), 0);
     document.getElementById('dash-valor-inv').innerText = `$${formatearNumero(valorCostoInv)}`;
     document.getElementById('dash-patrimonio').innerText = `$${formatearNumero(valorCostoInv + (cajaIng - cajaGas))}`;
-
 }
 
-/* --- INVENTARIO --- */
+/* --- INVENTARIO (PUNTO 4: EDITAR STOCK) --- */
 const fProd = document.getElementById('form-producto');
-if(fProd){
-    fProd.addEventListener('submit', (e)=>{
+if(fProd) {
+    fProd.addEventListener('submit', (e) => {
         e.preventDefault();
-
         productos.push({
             id: Date.now(),
             nombre: document.getElementById('prod-nombre').value,
@@ -101,505 +90,318 @@ if(fProd){
             costo: limpiarNumero(document.getElementById('prod-costo').value),
             precio: limpiarNumero(document.getElementById('prod-precio').value)
         });
-
         actualizarTodo();
         fProd.reset();
     });
 }
 
-window.editarStock = function(id){
-
+window.editarStock = function(id) {
     const p = productos.find(x => x.id === id);
-
     const nuevoStock = prompt(`Editar Stock para ${p.nombre}:`, p.cantidad);
-
-    if(nuevoStock !== null){
+    if(nuevoStock !== null) {
         p.cantidad = parseInt(nuevoStock) || 0;
         actualizarTodo();
     }
-
 }
 
-window.eliminarProd = function(id){
-
-    if(confirm("¿Eliminar producto?")){
+window.eliminarProd = function(id) {
+    if(confirm("¿Eliminar producto?")) {
         productos = productos.filter(p => p.id !== id);
         actualizarTodo();
     }
-
 }
 
-function renderInventario(){
-
+function renderInventario() {
     const t = document.getElementById('tabla-inventario');
-
     if(!t) return;
-
     let cTotal = 0, vTotal = 0;
-
     t.innerHTML = productos.map(p => {
-
-        cTotal += (p.costo * p.cantidad);
-        vTotal += (p.precio * p.cantidad);
-
-        return `
-        <tr>
-        <td>${p.nombre}</td>
-        <td class="${p.cantidad <= 2 ? 'stock-bajo' : ''}">
-        <b>${p.cantidad}</b>
-        </td>
-        <td>$${formatearNumero(p.costo)}</td>
-        <td>$${formatearNumero(p.precio)}</td>
-        <td>
-        <button class="btn-danger" onclick="eliminarProd(${p.id})">❌</button>
-        </td>
+        cTotal += (p.costo * p.cantidad); vTotal += (p.precio * p.cantidad);
+        return `<tr>
+            <td>${p.nombre}</td>
+            <td><b style="cursor:pointer; color:blue;" onclick="editarStock(${p.id})">${p.cantidad} ✏️</b></td>
+            <td>$${formatearNumero(p.costo)}</td>
+            <td>$${formatearNumero(p.precio)}</td>
+            <td><button class="btn-danger" onclick="eliminarProd(${p.id})">❌</button></td>
         </tr>`;
-
     }).join('');
-
     document.getElementById('float-costo').innerText = `$${formatearNumero(cTotal)}`;
     document.getElementById('float-venta').innerText = `$${formatearNumero(vTotal)}`;
-
 }
 
-/* --- GASTOS DIARIOS --- */
+/* --- GASTOS (PUNTO 2: DESCONTAR EFECTIVO) --- */
 const fGastoLog = document.getElementById('form-gastos-diarios');
-
-if(fGastoLog){
-
-    fGastoLog.addEventListener('submit', (e)=>{
-
+if(fGastoLog) {
+    fGastoLog.addEventListener('submit', (e) => {
         e.preventDefault();
-
         const monto = limpiarNumero(document.getElementById('gasto-monto-op').value);
         const desc = document.getElementById('gasto-desc-op').value;
-        const cat = document.getElementById('gasto-categoria').value;
-        const fecha = document.getElementById('gasto-fecha').value || new Date().toLocaleDateString();
-
-        const gastoData = { id: Date.now(), fecha, cat, desc, monto };
-
-        historialGastos.push(gastoData);
-
+        
+        // Se registra como gasto en transacciones para descontar del balance actual
         transacciones.push({
-            id: Date.now()+1,
-            tipo:'gasto',
-            desc:`[${cat}] ${desc}`,
-            monto:monto,
-            fecha:fecha
+            id: Date.now(),
+            tipo: 'gasto',
+            desc: `Gasto Operativo: ${desc}`,
+            monto: monto,
+            fecha: new Date().toLocaleDateString()
         });
-
         actualizarTodo();
         fGastoLog.reset();
-
-        alert("Gasto registrado en contabilidad.");
-
+        alert("Gasto registrado y descontado de caja.");
     });
-
 }
 
-function renderGastos(){
-
-    const tabla = document.getElementById('tabla-gastos-logistica');
-
-    if(tabla){
-
-        tabla.innerHTML = historialGastos.slice(-20).map(g=>`
-        <tr>
-        <td>${g.fecha}</td>
-        <td>${g.cat}</td>
-        <td>${g.desc}</td>
-        <td style="color:red">-$${formatearNumero(g.monto)}</td>
-        </tr>
-        `).reverse().join('');
-
-    }
-
-}
-
-/* --- GESTIÓN DE PEDIDOS Y STOCK --- */
-
-window.agregarFila = function(){
-
+/* --- PEDIDOS (PUNTO 5: ENTREGAR POR ITEMS) --- */
+window.agregarFila = function() {
     const div = document.createElement('div');
-
-    div.className='fila-producto';
-
-    div.innerHTML=`
-    <input type="text" placeholder="Producto exacto" class="p-nombre" required>
-    <input type="number" placeholder="Cant." class="p-cant" required>
-    <button type="button" onclick="this.parentElement.remove()">✕</button>
-    `;
-
+    div.className = 'fila-producto';
+    div.innerHTML = `<input type="text" placeholder="Producto" class="p-nombre" required> 
+                     <input type="number" placeholder="Cant." class="p-cant" required> 
+                     <button type="button" onclick="this.parentElement.remove()">✕</button>`;
     document.getElementById('contenedor-filas-productos').appendChild(div);
-
 }
 
-/* --- LISTA DE COMPRAS DESDE PEDIDOS --- */
-
-let listaCompras = [];
-
-window.generarListaCompras = function(){
-
-    const contenedor = document.getElementById("seccion-lista-compras");
-    const ul = document.getElementById("lista-compras-items");
-
-    if(!contenedor || !ul) return;
-
-    let acumulado = {};
-
-    encargos.forEach(pedido=>{
-
-        pedido.items.forEach(item=>{
-
-            if(item.entregado) return;
-
-            const nombre = item.nombre.trim().toLowerCase();
-
-            if(!acumulado[nombre]){
-
-                acumulado[nombre] = {
-                    id:nombre,
-                    nombre:item.nombre,
-                    cantidad:0,
-                    comprado:false
-                };
-
-            }
-
-            acumulado[nombre].cantidad += item.cant;
-
+const fEnc = document.getElementById('form-encargo');
+if(fEnc) {
+    fEnc.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const cliente = document.getElementById('enc-cliente').value;
+        const total = limpiarNumero(document.getElementById('enc-total').value);
+        const abono = limpiarNumero(document.getElementById('enc-abono').value) || 0;
+        
+        encargos.push({
+            id: Date.now(),
+            cliente, total, abono, deuda: total - abono,
+            entregadoTotal: false,
+            items: Array.from(document.querySelectorAll('.fila-producto')).map(f => ({
+                nombre: f.querySelector('.p-nombre').value,
+                cant: f.querySelector('.p-cant').value,
+                entregado: false
+            }))
         });
-
+        
+        if(abono > 0) {
+            transacciones.push({
+                id: Date.now() + 1, tipo: 'ingreso', desc: `Abono inicial: ${cliente}`,
+                monto: abono, fecha: new Date().toLocaleDateString()
+            });
+        }
+        actualizarTodo();
+        fEnc.reset();
+        document.getElementById('contenedor-filas-productos').innerHTML = '<div class="fila-producto"><input type="text" placeholder="Producto" class="p-nombre" required><input type="number" placeholder="Cant." class="p-cant" required></div>';
     });
-
-    listaCompras = Object.values(acumulado);
-
-    renderListaCompras();
-
-    contenedor.style.display="block";
-
 }
 
-function renderListaCompras(){
-
-    const ul = document.getElementById("lista-compras-items");
-
-    if(!ul) return;
-
-    ul.innerHTML = listaCompras.map(p=>`
-
-    <li style="margin-bottom:6px">
-
-    <input type="checkbox"
-    ${p.comprado?"checked":""}
-    onchange="marcarComprado('${p.id}')">
-
-    <b>${p.nombre}</b> x${p.cantidad}
-
-    </li>
-
-    `).join("");
-
+window.entregarItem = function(pedidoId, itemIndex) {
+    const p = encargos.find(x => x.id === pedidoId);
+    const item = p.items[itemIndex];
+    
+    const r = confirm(`¿Entregar ${item.nombre}? \nOK: Sumar a Caja \nCANCELAR: Poner como Deuda`);
+    
+    if(r) {
+        // Sumar a caja (Asumimos que el precio ya está en el total, aquí solo marcamos entrega)
+        alert("Entregado y sumado a caja mentalmente (el abono ya se registró)");
+    } else {
+        alert("Marcado para deuda");
+    }
+    
+    item.entregado = true;
+    // Si todos están entregados, marcar pedido como finalizado
+    if(p.items.every(i => i.entregado)) p.entregadoTotal = true;
+    actualizarTodo();
 }
 
-window.marcarComprado = function(id){
-
-    const prod = listaCompras.find(p=>p.id===id);
-
-    if(!prod) return;
-
-    prod.comprado = !prod.comprado;
-
-    renderListaCompras();
-
+window.entregarTodoPedido = function(id) {
+    const p = encargos.find(x => x.id === id);
+    const tipoCaja = confirm("¿Sumar saldo restante a CAJA (Venta)? \nSi cancela, se mantendrá como DEUDA.");
+    
+    if(tipoCaja) {
+        if(p.deuda > 0) {
+            transacciones.push({
+                id: Date.now(), tipo: 'ingreso', desc: `Pago Final Pedido: ${p.cliente}`,
+                monto: p.deuda, fecha: new Date().toLocaleDateString()
+            });
+            p.abono += p.deuda;
+            p.deuda = 0;
+        }
+    }
+    p.items.forEach(i => i.entregado = true);
+    p.entregadoTotal = true;
+    actualizarTodo();
 }
 
-/* --- RENDERS --- */
+function renderPedidos() {
+    const c = document.getElementById('lista-pedidos-clientes');
+    if(!c) return;
+    c.innerHTML = encargos.filter(e => e.items && !e.entregadoTotal).map(e => `
+        <div class="card">
+            <strong>👤 ${e.cliente}</strong><br>
+            <small>Debe: $${formatearNumero(e.deuda)}</small>
+            <div style="margin:10px 0; border-top:1px solid #eee; padding-top:5px;">
+                ${e.items.map((it, idx) => `
+                    <div style="display:flex; justify-content:space-between; font-size:13px;">
+                        <span style="${it.entregado?'text-decoration:line-through; color:gray':''}">> ${it.nombre} (x${it.cant})</span>
+                        ${!it.entregado ? `<button onclick="entregarItem(${e.id}, ${idx})">Entregar</button>` : '✅'}
+                    </div>
+                `).join('')}
+            </div>
+            <button onclick="entregarTodoPedido(${e.id})" style="width:100%; background:green; color:white;">Entregar Todo</button>
+        </div>
+    `).join('');
+}
 
-function renderPedidos(){}
-function renderDeudas(){}
-function renderFinanzas(){}
-function renderHistorialReportes(){}
+/* --- DEUDORES (PUNTO 6: INCREMENTAR DEUDA) --- */
+const fDeuda = document.getElementById('form-deuda-directa');
+if(fDeuda) {
+    fDeuda.addEventListener('submit', (e) => {
+        e.preventDefault(); 
+        const m = limpiarNumero(document.getElementById('deuda-monto').value);
+        const nombreBusqueda = document.getElementById('deuda-cliente').value.trim();
+        
+        // Buscar si ya existe el deudor
+        const existente = encargos.find(en => en.cliente.toLowerCase() === nombreBusqueda.toLowerCase());
+        
+        if(existente) {
+            existente.deuda += m;
+            existente.total += m;
+            alert(`Deuda incrementada a ${existente.cliente}. Nueva deuda: $${formatearNumero(existente.deuda)}`);
+        } else {
+            encargos.push({
+                id: Date.now(), cliente: nombreBusqueda, total: m, abono: 0, deuda: m, entregadoTotal: true
+            });
+            alert("Nuevo deudor registrado.");
+        }
+        actualizarTodo();
+        fDeuda.reset();
+    });
+}
 
-function renderTodo(){
+window.abonar = function(id) {
+    const e = encargos.find(x => x.id === id);
+    const monto = limpiarNumero(document.getElementById(`in-abono-${id}`).value);
+    if(!monto || monto > e.deuda) return alert("Monto inválido");
+    
+    e.deuda -= monto;
+    e.abono += monto;
+    transacciones.push({
+        id: Date.now(), tipo: 'ingreso', desc: `Abono de: ${e.cliente}`, 
+        monto: monto, fecha: new Date().toLocaleDateString()
+    });
+    actualizarTodo();
+}
 
+function renderDeudas() {
+    const t = document.getElementById('tabla-deudores');
+    if(!t) return;
+    t.innerHTML = encargos.filter(e => e.deuda > 0).map(e => `
+        <tr><td>${e.cliente}</td><td style="color:red">$${formatearNumero(e.deuda)}</td>
+        <td><input type="number" id="in-abono-${e.id}" style="width:70px"></td>
+        <td><button onclick="abonar(${e.id})">Abonar</button></td></tr>
+    `).join('');
+}
+
+/* --- FINANZAS Y CIERRES --- */
+function renderFinanzas() {
+    const lista = document.getElementById('lista-transacciones');
+    if(lista) {
+        lista.innerHTML = transacciones.map(t => `
+            <tr><td>${t.fecha}</td><td>${t.desc}</td><td style="color:${t.tipo==='ingreso'?'green':'red'}">$${formatearNumero(t.monto)}</td></tr>
+        `).reverse().join('');
+    }
+}
+
+window.cerrarCaja = function() {
+    if (!confirm("¿Cerrar caja ahora? Se limpiarán las ventas diarias.")) return;
+    let ing = 0, gas = 0;
+    transacciones.forEach(t => t.tipo === 'ingreso' ? ing += t.monto : gas += t.monto);
+    historialReportes.push({
+        id: Date.now(), fecha: new Date().toLocaleString(),
+        totalIngresos: ing, totalGastos: gas, balance: ing - gas
+    });
+    transacciones = []; 
+    actualizarTodo();
+}
+
+function renderHistorialReportes() {
+    const h = document.getElementById('historial-reportes');
+    if(h) h.innerHTML = historialReportes.map(r => `
+        <div class="card" style="border-left:5px solid green; margin-bottom:10px;">
+            <h4>📅 ${r.fecha}</h4>
+            <p>Balance: $${formatearNumero(r.balance)} (Ingresos: $${formatearNumero(r.totalIngresos)} | Gastos: $${formatearNumero(r.totalGastos)})</p>
+        </div>
+    `).reverse().join('');
+}
+
+function renderTodo() {
     renderDashboard();
     renderInventario();
     renderFinanzas();
-    renderGastos();
     renderPedidos();
     renderDeudas();
     renderHistorialReportes();
-
-}
-/* ======================================================
-MOTIKA V4
-MEJORAS AVANZADAS PARA CONTROL DE TIENDA
-====================================================== */
-
-/* HISTORIAL DE PRODUCTOS VENDIDOS */
-let historialVentasProductos = [];
-
-
-/* =========================================
-REGISTRAR VENTA DE PRODUCTO
-========================================= */
-
-function registrarVentaProducto(nombre,cant,ganancia){
-
-    const prod = historialVentasProductos.find(p=>p.nombre===nombre);
-
-    if(prod){
-
-        prod.cantidad += cant;
-        prod.ganancia += ganancia;
-
-    }else{
-
-        historialVentasProductos.push({
-            nombre:nombre,
-            cantidad:cant,
-            ganancia:ganancia
-        });
-
-    }
-
 }
 
-
-/* =========================================
-LISTA DE COMPRAS INTELIGENTE
-========================================= */
-
-window.generarListaCompras = function(){
-
-    const contenedor = document.getElementById("seccion-lista-compras");
-    const ul = document.getElementById("lista-compras-items");
-
-    if(!contenedor || !ul) return;
-
-    let acumulado = {};
-
-    encargos.forEach(pedido=>{
-
-        pedido.items.forEach(item=>{
-
-            if(item.entregado) return;
-
-            const nombre = item.nombre.trim().toLowerCase();
-
-            if(!acumulado[nombre]){
-
-                acumulado[nombre] = {
-                    id:nombre,
-                    nombre:item.nombre,
-                    cantidad:0,
-                    comprado:false,
-                    inventario:0,
-                    comprar:false
-                };
-
-            }
-
-            acumulado[nombre].cantidad += item.cant;
-
+/* --- BUSQUEDA VENTAS --- */
+const inputBusqueda = document.getElementById('input-buscar-prod');
+if (inputBusqueda) {
+    inputBusqueda.addEventListener('input', () => {
+        const texto = inputBusqueda.value.toLowerCase();
+        const sug = document.getElementById('lista-sugerencias');
+        sug.innerHTML = '';
+        if (texto.length < 1) return;
+        productos.filter(p => p.nombre.toLowerCase().includes(texto) && p.cantidad > 0).forEach(p => {
+            const d = document.createElement('div');
+            d.innerHTML = `${p.nombre} ($${p.precio})`;
+            d.style = "padding:10px; cursor:pointer; border-bottom:1px solid #eee;";
+            d.onclick = () => {
+                inputBusqueda.value = p.nombre;
+                document.getElementById('select-producto-id').value = p.id;
+                sug.innerHTML = '';
+            };
+            sug.appendChild(d);
         });
-
     });
+}
 
+const fTrans = document.getElementById('form-transaccion');
+if(fTrans) {
+    fTrans.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const tipo = document.getElementById('trans-tipo').value;
+        let monto = limpiarNumero(document.getElementById('trans-monto').value);
+        let desc = document.getElementById('trans-desc').value;
 
-    /* VERIFICAR INVENTARIO */
-
-    Object.values(acumulado).forEach(prod=>{
-
-        const inv = productos.find(p=>
-            p.nombre.toLowerCase() === prod.nombre.toLowerCase()
-        );
-
-        if(inv){
-
-            prod.inventario = inv.cantidad;
-
-            if(inv.cantidad < prod.cantidad){
-
-                prod.comprar = true;
-
-            }
-
-        }else{
-
-            prod.comprar = true;
-
+        if(tipo === 'venta') {
+            const pId = document.getElementById('select-producto-id').value;
+            const cant = parseInt(document.getElementById('trans-cantidad').value);
+            const p = productos.find(x => x.id == pId);
+            if(p && p.cantidad >= cant) {
+                p.cantidad -= cant;
+                monto = p.precio * cant;
+                desc = `Venta: ${p.nombre} x${cant}`;
+            } else { return alert("Error en producto o stock"); }
         }
-
-    });
-
-
-    listaCompras = Object.values(acumulado);
-
-    /* ORDENAR POR PRIORIDAD */
-
-    listaCompras.sort((a,b)=>b.comprar - a.comprar);
-
-    renderListaCompras();
-
-    contenedor.style.display="block";
-
-}
-
-
-
-/* =========================================
-RENDER LISTA COMPRAS
-========================================= */
-
-function renderListaCompras(){
-
-    const ul = document.getElementById("lista-compras-items");
-
-    if(!ul) return;
-
-    ul.innerHTML = listaCompras.map(p=>`
-
-<li style="margin-bottom:8px">
-
-<input type="checkbox"
-${p.comprado?"checked":""}
-onchange="marcarComprado('${p.id}')">
-
-<b>${p.nombre}</b> x${p.cantidad}
-
-<br>
-
-<small>
-Inventario: ${p.inventario}
-${p.comprar?"⚠ COMPRAR": "✔ EN STOCK"}
-</small>
-
-</li>
-
-`).join("");
-
-}
-
-
-
-/* =========================================
-MARCAR PRODUCTO COMPRADO
-========================================= */
-
-window.marcarComprado = function(id){
-
-    const prod = listaCompras.find(p=>p.id===id);
-
-    if(!prod) return;
-
-    prod.comprado = !prod.comprado;
-
-    renderListaCompras();
-
-}
-
-
-
-/* =========================================
-PREPARAR ENTREGAS
-========================================= */
-
-window.prepararEntregas = function(){
-
-    const comprados = listaCompras.filter(p=>p.comprado);
-
-    encargos.forEach(pedido=>{
-
-        pedido.items.forEach(item=>{
-
-            const match = comprados.find(p=>
-                p.nombre.toLowerCase() === item.nombre.toLowerCase()
-            );
-
-            if(match){
-
-                item.entregado=false;
-
-            }
-
+        transacciones.push({
+            id: Date.now(), tipo: (tipo === 'gasto' ? 'gasto' : 'ingreso'),
+            desc, monto, fecha: new Date().toLocaleDateString()
         });
-
+        actualizarTodo();
+        fTrans.reset();
+        window.toggleProductoSelector();
     });
-
-    actualizarTodo();
-
-    alert("Pedidos listos para entregar");
-
 }
 
-
-
-/* =========================================
-ALERTA STOCK BAJO
-========================================= */
-
-function verificarStockBajo(){
-
-    productos.forEach(p=>{
-
-        if(p.cantidad <= 2){
-
-            console.warn("Stock bajo:",p.nombre);
-
-        }
-
-    });
-
+window.toggleProductoSelector = function() {
+    const tipo = document.getElementById('trans-tipo').value;
+    const isVenta = (tipo === 'venta');
+    document.getElementById('contenedor-busqueda-prod').style.display = isVenta ? 'block' : 'none';
+    document.getElementById('trans-cantidad').style.display = isVenta ? 'block' : 'none';
+    document.getElementById('trans-monto').style.display = isVenta ? 'none' : 'block';
+    document.getElementById('trans-desc').style.display = isVenta ? 'none' : 'block';
 }
 
-
-
-/* =========================================
-PRODUCTOS MAS VENDIDOS
-========================================= */
-
-function topProductos(){
-
-    const top = [...historialVentasProductos];
-
-    top.sort((a,b)=>b.cantidad - a.cantidad);
-
-    return top.slice(0,5);
-
-}
+window.onload = () => { if(window.toggleProductoSelector) window.toggleProductoSelector(); };
 
 
 
-/* =========================================
-GANANCIA POR PRODUCTO
-========================================= */
 
-function reporteGananciaProductos(){
-
-    return historialVentasProductos.map(p=>({
-
-        producto:p.nombre,
-        vendidos:p.cantidad,
-        ganancia:p.ganancia
-
-    }));
-
-}
-
-
-
-/* =========================================
-AUTO CONTROL AL RENDER
-========================================= */
-
-const renderOriginalV4 = renderTodo;
-
-renderTodo = function(){
-
-    renderOriginalV4();
-
-    verificarStockBajo();
-
-};
