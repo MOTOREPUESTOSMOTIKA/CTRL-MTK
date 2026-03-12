@@ -399,14 +399,6 @@ window.toggleProductoSelector = function() {
     document.getElementById('trans-desc').style.display = isVenta ? 'none' : 'block';
 }
 
-window.generarListaCompras = function() {
-    const lista = productos.filter(p => p.cantidad <= 2);
-    const contenedor = document.getElementById('seccion-lista-compras');
-    const ul = document.getElementById('lista-compras-items');
-    ul.innerHTML = lista.length ? lista.map(p => `<li>⚠️ <b>${p.nombre}</b>: Quedan ${p.cantidad}</li>`).join('') : '<li>✅ Stock completo</li>';
-    contenedor.style.display = 'block';
-}
-
 window.onload = () => { if(window.toggleProductoSelector) window.toggleProductoSelector(); }; 
 
 /* =========================================================
