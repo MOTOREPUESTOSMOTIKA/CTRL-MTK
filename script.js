@@ -641,8 +641,9 @@ window.seleccionarProductoVenta = function(id,nombre){
 
 /* INICIAR BUSCADOR */
 window.addEventListener("load", iniciarBuscadorProductos);
+
 /* =====================================
-LISTA INTELIGENTE DE COMPRAS DESDE PEDIDOS
+LISTA DE COMPRAS DESDE PEDIDOS
 ===================================== */
 
 let listaCompras = [];
@@ -652,6 +653,8 @@ window.generarListaCompras = function(){
     const contenedor = document.getElementById("seccion-lista-compras");
     const ul = document.getElementById("lista-compras-items");
 
+    if(!contenedor || !ul) return;
+
     let acumulado = {};
 
     encargos.forEach(pedido => {
@@ -660,10 +663,11 @@ window.generarListaCompras = function(){
 
             if(item.entregado) return;
 
-            const nombre = item.nombre.toLowerCase();
+            const nombre = item.nombre.trim().toLowerCase();
 
             if(!acumulado[nombre]){
                 acumulado[nombre] = {
+                    id: nombre,
                     nombre: item.nombre,
                     cantidad: 0,
                     comprado:false
@@ -690,16 +694,13 @@ function renderListaCompras(){
 
     if(!ul) return;
 
-    const pendientes = listaCompras.filter(p=>!p.comprado);
-    const comprados = listaCompras.filter(p=>p.comprado);
-
-    ul.innerHTML = [...pendientes,...comprados].map((p,i)=>`
+    ul.innerHTML = listaCompras.map(p=>`
 
         <li style="margin-bottom:6px">
 
         <input type="checkbox"
         ${p.comprado?"checked":""}
-        onchange="marcarComprado(${i})">
+        onchange="marcarComprado('${p.id}')">
 
         <b>${p.nombre}</b> x${p.cantidad}
 
@@ -710,14 +711,17 @@ function renderListaCompras(){
 }
 
 
-window.marcarComprado = function(index){
+window.marcarComprado = function(id){
 
-    listaCompras[index].comprado = !listaCompras[index].comprado;
+    const prod = listaCompras.find(p=>p.id === id);
+
+    if(!prod) return;
+
+    prod.comprado = !prod.comprado;
 
     renderListaCompras();
 
 }
-
 
 /* =====================================
 GENERAR PRODUCTOS LISTOS PARA ENTREGA
