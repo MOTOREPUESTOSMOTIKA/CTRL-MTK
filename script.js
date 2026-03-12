@@ -332,3 +332,274 @@ function renderTodo(){
     renderHistorialReportes();
 
 }
+/* ======================================================
+MOTIKA V4
+MEJORAS AVANZADAS PARA CONTROL DE TIENDA
+====================================================== */
+
+/* HISTORIAL DE PRODUCTOS VENDIDOS */
+let historialVentasProductos = [];
+
+
+/* =========================================
+REGISTRAR VENTA DE PRODUCTO
+========================================= */
+
+function registrarVentaProducto(nombre,cant,ganancia){
+
+    const prod = historialVentasProductos.find(p=>p.nombre===nombre);
+
+    if(prod){
+
+        prod.cantidad += cant;
+        prod.ganancia += ganancia;
+
+    }else{
+
+        historialVentasProductos.push({
+            nombre:nombre,
+            cantidad:cant,
+            ganancia:ganancia
+        });
+
+    }
+
+}
+
+
+/* =========================================
+LISTA DE COMPRAS INTELIGENTE
+========================================= */
+
+window.generarListaCompras = function(){
+
+    const contenedor = document.getElementById("seccion-lista-compras");
+    const ul = document.getElementById("lista-compras-items");
+
+    if(!contenedor || !ul) return;
+
+    let acumulado = {};
+
+    encargos.forEach(pedido=>{
+
+        pedido.items.forEach(item=>{
+
+            if(item.entregado) return;
+
+            const nombre = item.nombre.trim().toLowerCase();
+
+            if(!acumulado[nombre]){
+
+                acumulado[nombre] = {
+                    id:nombre,
+                    nombre:item.nombre,
+                    cantidad:0,
+                    comprado:false,
+                    inventario:0,
+                    comprar:false
+                };
+
+            }
+
+            acumulado[nombre].cantidad += item.cant;
+
+        });
+
+    });
+
+
+    /* VERIFICAR INVENTARIO */
+
+    Object.values(acumulado).forEach(prod=>{
+
+        const inv = productos.find(p=>
+            p.nombre.toLowerCase() === prod.nombre.toLowerCase()
+        );
+
+        if(inv){
+
+            prod.inventario = inv.cantidad;
+
+            if(inv.cantidad < prod.cantidad){
+
+                prod.comprar = true;
+
+            }
+
+        }else{
+
+            prod.comprar = true;
+
+        }
+
+    });
+
+
+    listaCompras = Object.values(acumulado);
+
+    /* ORDENAR POR PRIORIDAD */
+
+    listaCompras.sort((a,b)=>b.comprar - a.comprar);
+
+    renderListaCompras();
+
+    contenedor.style.display="block";
+
+}
+
+
+
+/* =========================================
+RENDER LISTA COMPRAS
+========================================= */
+
+function renderListaCompras(){
+
+    const ul = document.getElementById("lista-compras-items");
+
+    if(!ul) return;
+
+    ul.innerHTML = listaCompras.map(p=>`
+
+<li style="margin-bottom:8px">
+
+<input type="checkbox"
+${p.comprado?"checked":""}
+onchange="marcarComprado('${p.id}')">
+
+<b>${p.nombre}</b> x${p.cantidad}
+
+<br>
+
+<small>
+Inventario: ${p.inventario}
+${p.comprar?"⚠ COMPRAR": "✔ EN STOCK"}
+</small>
+
+</li>
+
+`).join("");
+
+}
+
+
+
+/* =========================================
+MARCAR PRODUCTO COMPRADO
+========================================= */
+
+window.marcarComprado = function(id){
+
+    const prod = listaCompras.find(p=>p.id===id);
+
+    if(!prod) return;
+
+    prod.comprado = !prod.comprado;
+
+    renderListaCompras();
+
+}
+
+
+
+/* =========================================
+PREPARAR ENTREGAS
+========================================= */
+
+window.prepararEntregas = function(){
+
+    const comprados = listaCompras.filter(p=>p.comprado);
+
+    encargos.forEach(pedido=>{
+
+        pedido.items.forEach(item=>{
+
+            const match = comprados.find(p=>
+                p.nombre.toLowerCase() === item.nombre.toLowerCase()
+            );
+
+            if(match){
+
+                item.entregado=false;
+
+            }
+
+        });
+
+    });
+
+    actualizarTodo();
+
+    alert("Pedidos listos para entregar");
+
+}
+
+
+
+/* =========================================
+ALERTA STOCK BAJO
+========================================= */
+
+function verificarStockBajo(){
+
+    productos.forEach(p=>{
+
+        if(p.cantidad <= 2){
+
+            console.warn("Stock bajo:",p.nombre);
+
+        }
+
+    });
+
+}
+
+
+
+/* =========================================
+PRODUCTOS MAS VENDIDOS
+========================================= */
+
+function topProductos(){
+
+    const top = [...historialVentasProductos];
+
+    top.sort((a,b)=>b.cantidad - a.cantidad);
+
+    return top.slice(0,5);
+
+}
+
+
+
+/* =========================================
+GANANCIA POR PRODUCTO
+========================================= */
+
+function reporteGananciaProductos(){
+
+    return historialVentasProductos.map(p=>({
+
+        producto:p.nombre,
+        vendidos:p.cantidad,
+        ganancia:p.ganancia
+
+    }));
+
+}
+
+
+
+/* =========================================
+AUTO CONTROL AL RENDER
+========================================= */
+
+const renderOriginalV4 = renderTodo;
+
+renderTodo = function(){
+
+    renderOriginalV4();
+
+    verificarStockBajo();
+
+};
