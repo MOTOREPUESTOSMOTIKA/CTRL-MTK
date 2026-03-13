@@ -431,3 +431,13 @@ window.toggleProductoSelector = function() {
 }
 
 window.onload = () => { if(window.toggleProductoSelector) window.toggleProductoSelector(); };
+if("serviceWorker" in navigator){
+
+navigator.serviceWorker.register("sw.js")
+.then(()=>{
+
+console.log("Service Worker activo");
+
+});
+
+}
